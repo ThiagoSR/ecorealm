@@ -6,6 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:ecorealm/ecorealm.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:http/http.dart' as http;
 
 void main() {
@@ -58,6 +59,10 @@ class _MyAppState extends State<MyApp> {
             tags: ['1', '2', '3'],
         ));
     }
+
+    //     profile	View your basic profile info
+    // email	View your email address
+    // openid	Authenticate using OpenID Connect
 
     @override
     Widget build(BuildContext context) {
@@ -422,6 +427,14 @@ class _MyAppState extends State<MyApp> {
                                     ),
                                 ),
                                 SizedBox(height: 20),
+                                ElevatedButton(onPressed: () {
+                                    GoogleSignIn _googleSignIn = GoogleSignIn(
+                                        clientId: '467414920961-gqasomafshnvua7bfr3qk6g2bjuiair4.apps.googleusercontent.com',
+                                        scopes: [
+                                        ],
+                                    );
+                                    _googleSignIn.signIn();
+                                }, child: Text("Guguru"))
                             ]
                         ),
                     ),
