@@ -32,6 +32,7 @@ import io.realm.mongodb.sync.SyncConfiguration
 import io.realm.mongodb.sync.Sync
 import io.realm.mongodb.sync.SyncSession
 import io.realm.mongodb.ErrorCode
+import io.realm.mongodb.auth.GoogleAuthType
 import io.realm.RealmList
 import io.realm.RealmConfiguration
 
@@ -65,6 +66,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "init" -> init(result)
             "logIn" -> logIn(call, result)
+            "googleLogIn" -> googleLogIn(call, result)
             "logOut" -> logOut(result)
             "upload" -> upload(result)
             "download" -> download(result)
@@ -161,6 +163,17 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             }
         }
         Log.d("logout", "cabou de initar");
+    }
+
+    fun googleLogIn(call: MethodCall, result: Result) {
+        // val a = app.loginAsync(Credentials.google(idToken ,GoogleAuthType.ID_TOKEN)) {
+
+        // }
+        //     .requestEmail()
+        //     .build()
+        // val googleSignInClient = GoogleSignIn.getClient(this, gso)
+        // val signInIntent: Intent = googleSignInClient.signInIntent
+        // startActivityForResult(signInIntent, RC_SIGN_IN) 
     }
 
     fun upload(result: Result) {
