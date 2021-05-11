@@ -1,4 +1,4 @@
-# ecorealm
+# eco_realm
 
 A new flutter plugin project.
 
