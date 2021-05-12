@@ -135,7 +135,11 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         if (customer_id != "") {
-                                            print(await Ecorealm.getCustomers(customer_id));
+                                            print(await Ecorealm.getCustomers(
+                                                campo: '_id',
+                                                logicalOperator: RealmLogicalOperator.equals,
+                                                valor: customer_id
+                                            ));
                                         }
                                     }, 
                                     child: Text("Pegar ultimo customer"),
@@ -198,7 +202,11 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         if (appointment_id != "") {
-                                            print(await Ecorealm.getAppointments(appointment_id));
+                                            print(await Ecorealm.getAppointments(
+                                                campo: '_id',
+                                                logicalOperator: RealmLogicalOperator.equals,
+                                                valor: appointment_id
+                                            ));
                                         }
                                     }, 
                                     child: Text("Pegar ultimo appointment"),
@@ -263,7 +271,11 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         if (record_id != "") {
-                                            print(await Ecorealm.getRecords(record_id));
+                                            print(await Ecorealm.getRecords(
+                                                campo: '_id',
+                                                logicalOperator: RealmLogicalOperator.equals,
+                                                valor: record_id
+                                            ));
                                         }
                                     }, 
                                     child: Text("Pegar ultimo record"),
@@ -332,7 +344,11 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         if (configuration_id != "") {
-                                            print(await Ecorealm.getConfigurations(configuration_id));
+                                            print(await Ecorealm.getConfigurations(
+                                                campo: '_id',
+                                                logicalOperator: RealmLogicalOperator.equals,
+                                                valor: configuration_id
+                                            ));
                                         }
                                     }, 
                                     child: Text("Pegar ultimo configuration"),
@@ -393,7 +409,11 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         if (textsuggestion_id != "") {
-                                            print(await Ecorealm.getTextSuggestions(textsuggestion_id));
+                                            print(await Ecorealm.getTextSuggestions(
+                                                campo: '_id',
+                                                logicalOperator: RealmLogicalOperator.equals,
+                                                valor: textsuggestion_id
+                                            ));
                                         }
                                     }, 
                                     child: Text("Pegar ultimo TextSuggestion"),
@@ -427,6 +447,38 @@ class _MyAppState extends State<MyApp> {
                                     ),
                                 ),
                                 SizedBox(height: 20),
+                                // testes pesquisa
+                                ElevatedButton(
+                                    onPressed: () async {
+                                        if (appointment_id != "") {
+                                            print(await Ecorealm.getCustomers(
+                                                campo: 'first_name',
+                                                logicalOperator: RealmLogicalOperator.like,
+                                                valor: 'teste'
+                                            ));
+                                        }
+                                    }, 
+                                    child: Text("Filtrar nome customer"),
+                                    style: ButtonStyle(
+                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.pink)
+                                    ),
+                                ),
+                                // ElevatedButton(
+                                //     onPressed: () async {
+                                //         if (appointment_id != "") {
+                                //             print(await Ecorealm.getCustomers(
+                                //                 campo: 'last_name',
+                                //                 logicalOperator: RealmLogicalOperator.inList,
+                                //                 valor: ['teste','teste2','alterado']
+                                //             ));
+                                //         }
+                                //     }, 
+                                //     child: Text("Filtrar ultimo nome customer"),
+                                //     style: ButtonStyle(
+                                //         backgroundColor: MaterialStateColor.resolveWith((states) => Colors.pink)
+                                //     ),
+                                // ),
+                                //TODO gerar SHA1 e colocar no App
                                 ElevatedButton(onPressed: () {
                                     GoogleSignIn _googleSignIn = GoogleSignIn(
                                         clientId: '467414920961-gqasomafshnvua7bfr3qk6g2bjuiair4.apps.googleusercontent.com',

@@ -4,6 +4,16 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
+enum RealmLogicalOperator {
+    equals,
+    like,
+    greater,
+    lesser,
+    beetwen,
+    notNull,
+    // inList
+}
+
 class Ecorealm {
     static const MethodChannel _channel =
         const MethodChannel('ecorealm');
@@ -45,11 +55,17 @@ class Ecorealm {
         return await _channel.invokeMethod("upload");
     }
     
-    static Future<List> getCustomers([String id]) async {
+    static Future<List> getCustomers({
+        String campo,
+        RealmLogicalOperator logicalOperator,
+        dynamic valor
+    }) async {
         return await _channel.invokeMethod(
             'listCustomer',
             {
-                "id": id
+                "campo": campo,
+                "logicalOperator": logicalOperator,
+                "valor": valor, 
             }
             )
             .onError((error, stackTrace) {
@@ -124,11 +140,17 @@ class Ecorealm {
     }
 
 
-    static Future<List> getAppointments([String id]) async {
+    static Future<List> getAppointments({
+        String campo,
+        RealmLogicalOperator logicalOperator,
+        dynamic valor
+    }) async {
         return await _channel.invokeMethod(
             'listAppointment',
             {
-                "id": id
+                "campo": campo,
+                "logicalOperator": logicalOperator,
+                "valor": valor, 
             }
             )
             .onError((error, stackTrace) {
@@ -187,11 +209,17 @@ class Ecorealm {
     }
 
 
-    static Future<List> getRecords([String id]) async {
+    static Future<List> getRecords({
+        String campo,
+        RealmLogicalOperator logicalOperator,
+        dynamic valor
+    }) async {
         return await _channel.invokeMethod(
             'listRecord',
             {
-                "id": id
+                "campo": campo,
+                "logicalOperator": logicalOperator,
+                "valor": valor, 
             }
             )
             .onError((error, stackTrace) {
@@ -258,11 +286,17 @@ class Ecorealm {
     }
 
 
-    static Future<List> getConfigurations([String id]) async {
+    static Future<List> getConfigurations({
+        String campo,
+        RealmLogicalOperator logicalOperator,
+        dynamic valor
+    }) async {
         return await _channel.invokeMethod(
             'listConfiguration',
             {
-                "id": id
+                "campo": campo,
+                "logicalOperator": logicalOperator,
+                "valor": valor, 
             }
         )
         .onError((error, stackTrace) {
@@ -328,11 +362,17 @@ class Ecorealm {
         );
     }
 
-    static Future<List> getTextSuggestions([String id]) async {
+    static Future<List> getTextSuggestions({
+        String campo,
+        RealmLogicalOperator logicalOperator,
+        dynamic valor
+    }) async {
         return await _channel.invokeMethod(
             'listTextSuggestion',
             {
-                "id": id
+                "campo": campo,
+                "logicalOperator": logicalOperator,
+                "valor": valor, 
             }
             )
             .onError((error, stackTrace) {
