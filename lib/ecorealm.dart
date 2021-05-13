@@ -1,6 +1,6 @@
 
 import 'dart:async';
-
+                       
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -36,6 +36,20 @@ class Ecorealm {
             {
                 "username": username,
                 "password": password
+            }
+        ).onError((error, stackTrace) {
+            print("Sem conexão");
+            return false;
+        });
+    }
+
+    static Future<bool> logInGoogle({
+        String token
+    }) async {
+        return await _channel.invokeMethod(
+            "logInGoogle",
+            {
+                "token": token
             }
         ).onError((error, stackTrace) {
             print("Sem conexão");

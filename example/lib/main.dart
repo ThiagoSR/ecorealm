@@ -479,13 +479,41 @@ class _MyAppState extends State<MyApp> {
                                 //     ),
                                 // ),
                                 //TODO gerar SHA1 e colocar no App
-                                ElevatedButton(onPressed: () {
+                                ElevatedButton(onPressed: () async {
                                     GoogleSignIn _googleSignIn = GoogleSignIn(
-                                        clientId: '467414920961-gqasomafshnvua7bfr3qk6g2bjuiair4.apps.googleusercontent.com',
+                                        clientId: '302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com',
                                         scopes: [
+                                            'profile',
+                                            'email',
+                                            'openid'
                                         ],
                                     );
-                                    _googleSignIn.signIn();
+                                    if (!await _googleSignIn.isSignedIn()){
+                                        await _googleSignIn.signIn();
+                                        if (await _googleSignIn.isSignedIn()) {
+                                            print(_googleSignIn.clientId);
+                                            print(_googleSignIn.currentUser);
+                                            print(_googleSignIn.currentUser.id);
+                                            print(_googleSignIn.currentUser.email);
+                                            print(_googleSignIn.currentUser.displayName);
+                                            print(await _googleSignIn.currentUser.authHeaders);
+                                                await _googleSignIn.currentUser.authentication.then((value) async {
+                                                    print(value.idToken);
+                                                    print(value.accessToken);
+                                                    print(value.serverAuthCode);
+                                                    print(value.hashCode);
+                                                    print(await Ecorealm.logInGoogle(
+                                                        token: value.serverAuthCode
+                                                    ));
+                                                }
+                                            );
+                                        }
+                                    } else {
+                                        await _googleSignIn.signOut();
+
+                                        print('dessingnado');
+                                    }
+                                    
                                 }, child: Text("Guguru"))
                             ]
                         ),

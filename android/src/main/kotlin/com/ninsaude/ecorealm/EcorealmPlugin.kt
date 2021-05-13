@@ -68,7 +68,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "init" -> init(result)
             "logIn" -> logIn(call, result)
-            "googleLogIn" -> googleLogIn(call, result)
+            "logInGoogle" -> logInGoogle(call, result)
             "logOut" -> logOut(result)
             "upload" -> upload(result)
             "download" -> download(result)
@@ -167,15 +167,32 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("logout", "cabou de initar");
     }
 
-    fun googleLogIn(call: MethodCall, result: Result) {
-        // val a = app.loginAsync(Credentials.google(idToken ,GoogleAuthType.ID_TOKEN)) {
-
-        // }
-        //     .requestEmail()
-        //     .build()
-        // val googleSignInClient = GoogleSignIn.getClient(this, gso)
-        // val signInIntent: Intent = googleSignInClient.signInIntent
-        // startActivityForResult(signInIntent, RC_SIGN_IN) 
+    fun logInGoogle(call: MethodCall, result: Result) {
+        val token: String? = call.argument("token")
+        if (!token.isNullOrBlank()){
+            Log.d("Token", token)
+            app.loginAsync(Credentials.google(token, GoogleAuthType.ID_TOKEN)) {
+                if (it.isSuccess) {
+                    sessionInit()
+                    partitionKey = app.currentUser()?.id
+                    result.success(true)
+                } else {
+                    if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
+                        result.error("408","Sem conexão", "Não há conexão com a internet")
+                    } else {
+                        result.success(false)
+                    }
+                }
+            }
+            // app.emailPassword.regi
+            //     .requestEmail()
+            //     .build()
+            // val googleSignInClient = GoogleSignIn.getClient(this, gso)
+            // val signInIntent: Intent = googleSignInClient.signInIntent
+            // startActivityForResult(signInIntent, RC_SIGN_IN) 
+        } else {
+            result.success(false)
+        }
     }
 
     fun upload(result: Result) {
