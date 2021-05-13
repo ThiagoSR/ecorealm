@@ -7,7 +7,10 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="5203864f465414ef" />
+  <component name="ExecutionTargetManager" SELECTED_TARGET="fe" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="ProjectId" id="1rWmhXgelfDCP9Fj8mSkqKgxVcI" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -16,7 +19,7 @@
   </component>
   <component name="PropertiesComponent">
     <property name="dart.analysis.tool.window.force.activate" value="false" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/example" />
     <property name="settings.editor.selected.configurable" value="AndroidSdkUpdater" />
     <property name="show.migrate.to.gradle.popup" value="false" />
   </component>
@@ -34,6 +37,10 @@
     <servers />
   </component>
   <component name="WindowStateProjectService">
+    <state x="669" y="404" key="FileChooserDialogImpl" timestamp="1620906701811">
+      <screen x="0" y="0" width="1920" height="1040" />
+    </state>
+    <state x="669" y="404" key="FileChooserDialogImpl/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1620906701811" />
     <state x="-1459" y="162" key="SettingsEditor" timestamp="1619697770760">
       <screen x="-1920" y="0" width="1920" height="1040" />
     </state>
@@ -42,10 +49,11 @@
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="100" y="100" width="1720" height="840" key="com.android.tools.idea.avdmanager.AvdListDialog/1920.0.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1619102724153" />
-    <state x="656" y="343" key="com.intellij.ide.util.TipDialog" timestamp="1620139375616">
+    <state x="656" y="343" key="com.intellij.ide.util.TipDialog" timestamp="1620906689536">
       <screen x="0" y="0" width="1920" height="1040" />
     </state>
     <state x="656" y="343" key="com.intellij.ide.util.TipDialog/0.0.1920.1040/-1920.0.1920.1040@-1920.0.1920.1040" timestamp="1619729541734" />
+    <state x="656" y="343" key="com.intellij.ide.util.TipDialog/0.0.1920.1040/-1920.0.1920.1040@0.0.1920.1040" timestamp="1620906689536" />
     <state x="656" y="343" key="com.intellij.ide.util.TipDialog/1920.0.1920.1040/0.0.1920.1040@0.0.1920.1040" timestamp="1620139375616" />
   </component>
 </project>

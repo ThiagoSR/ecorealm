@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "302342153269",
+    "project_id": "teste-realm",
+    "storage_bucket": "teste-realm.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:302342153269:android:c09d56faa45058cab6bd7c",
+        "android_client_info": {
+          "package_name": "com.ninsaude.ecorealm_example"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "302342153269-up5i7lc4pb8lertpq62cfd5cnj2f2k5m.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.ninsaude.ecorealm_example",
+            "certificate_hash": "615a536491860d90a8400f7701e1c09e6ee59d56"
+          }
+        },
+        {
+          "client_id": "302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcazYpPiOuOOJ4YeK7SNnu3Tt_aRs-5fk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

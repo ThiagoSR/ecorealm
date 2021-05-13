@@ -32,8 +32,10 @@ import io.realm.mongodb.sync.SyncConfiguration
 import io.realm.mongodb.sync.Sync
 import io.realm.mongodb.sync.SyncSession
 import io.realm.mongodb.ErrorCode
+import io.realm.mongodb.auth.GoogleAuthType
 import io.realm.RealmList
 import io.realm.RealmConfiguration
+import io.realm.RealmQuery
 
 import java.util.concurrent.FutureTask
 import java.util.concurrent.ExecutorService
@@ -52,6 +54,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
     private var partitionKey: String? = null
     private var config: SyncConfiguration? = null
+    private var objectIdProperties: List<String> = listOf("_id", "customer")
     private var appId: String = "ecodoc-wgion"
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
@@ -65,6 +68,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "init" -> init(result)
             "logIn" -> logIn(call, result)
+            "logInGoogle" -> logInGoogle(call, result)
             "logOut" -> logOut(result)
             "upload" -> upload(result)
             "download" -> download(result)
@@ -163,6 +167,34 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("logout", "cabou de initar");
     }
 
+    fun logInGoogle(call: MethodCall, result: Result) {
+        val token: String? = call.argument("token")
+        if (!token.isNullOrBlank()){
+            Log.d("Token", token)
+            app.loginAsync(Credentials.google(token, GoogleAuthType.ID_TOKEN)) {
+                if (it.isSuccess) {
+                    sessionInit()
+                    partitionKey = app.currentUser()?.id
+                    result.success(true)
+                } else {
+                    if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
+                        result.error("408","Sem conexão", "Não há conexão com a internet")
+                    } else {
+                        result.success(false)
+                    }
+                }
+            }
+            // app.emailPassword.regi
+            //     .requestEmail()
+            //     .build()
+            // val googleSignInClient = GoogleSignIn.getClient(this, gso)
+            // val signInIntent: Intent = googleSignInClient.signInIntent
+            // startActivityForResult(signInIntent, RC_SIGN_IN) 
+        } else {
+            result.success(false)
+        }
+    }
+
     fun upload(result: Result) {
         val session: SyncSession = app.getSync().getSession(config)
         val task: FutureTask<String> = FutureTask(UploadChanges(session), "test")
@@ -205,7 +237,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 cust.`_partition` = partitionKey!!
                 cust.first_name = first_name!!
                 cust.last_name = last_name!!
-                if (!avatar.isNullOrEmpty()) {
+                if (avatar != null) {
                     avatar.forEach {
                         avatarByte.add(it.toByte())
                     }
@@ -240,13 +272,13 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(config)
             var list = arrayListOf<Any>()
-            val filtro: String? = call.argument("id")
+            val campo: String? = call.argument("campo")
             lateinit var listResult: RealmResults<customer>;
             
-            if(filtro.isNullOrEmpty()) {
+            if (campo.isNullOrBlank()) {
                 listResult = realm.where<customer>().findAll()
             } else {
-                listResult = realm.where<customer>().equalTo("_id", ObjectId(filtro)).findAll()
+                listResult = filterResults(call, realm.where<customer>()) as RealmResults<customer>
             }
 
             listResult.forEach {
@@ -305,7 +337,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     if (cust != null) {
                         if (!first_name.isNullOrBlank()) cust.first_name = first_name
                         if (!last_name.isNullOrBlank()) cust.last_name = last_name 
-                        if (!avatar.isNullOrEmpty()) {
+                        if (avatar != null) {
                             avatar.forEach {
                                 avatarByte.add(it.toByte())
                             }
@@ -425,18 +457,15 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(config)
             var list = arrayListOf<Any>()
-            val filtro: String? = call.argument("id")
+            val campo: String? = call.argument("campo")
             lateinit var listResult: RealmResults<appointment>;
             
-            if(filtro.isNullOrEmpty()) {
+            if (campo.isNullOrBlank()) {
                 listResult = realm.where<appointment>().findAll()
-                
-                Log.d("length1", listResult.size.toString())
             } else {
-                listResult = realm.where<appointment>().equalTo("_id", ObjectId(filtro)).findAll()
-                
-                Log.d("length2", listResult.size.toString())
+                listResult = filterResults(call, realm.where<appointment>()) as RealmResults<appointment>
             }
+
             listResult.forEach {
                 list.add(hashMapOf(
                     "id" to it.`_id`.toString(),
@@ -569,7 +598,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 recor.description = description!!
                 recor.source = source!!
                 recor.tags = realm_tags
-                if (!content_bin.isNullOrEmpty()) {
+                if (content_bin != null) {
                     content_bin.forEach {
                         content_bin_byte.add(it.toByte())
                     }
@@ -606,13 +635,13 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(config)
             var list = arrayListOf<Any>()
-            val filtro: String? = call.argument("id")
+            val campo: String? = call.argument("campo")
             lateinit var listResult: RealmResults<record>;
             
-            if(filtro.isNullOrEmpty()) {
+            if (campo.isNullOrBlank()) {
                 listResult = realm.where<record>().findAll()
             } else {
-                listResult = realm.where<record>().equalTo("_id", ObjectId(filtro)).findAll()
+                listResult = filterResults(call, realm.where<record>()) as RealmResults<record>
             }
 
             listResult.forEach {
@@ -674,14 +703,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         if (date != null) recor.date_time = Date(date)
                         if (!description.isNullOrBlank()) recor.description = description
                         if (!source.isNullOrBlank()) recor.source = source
-                        if (!tags.isNullOrEmpty()) {
+                        if (tags != null) {
                             tags.forEach {
                                 realm_tags.add(it)
                             }
 
                             recor.tags = realm_tags
                         }
-                        if (!content_bin.isNullOrEmpty()) {
+                        if (content_bin != null) {
                             content_bin.forEach {
                                 content_bin_byte.add(it.toByte())
                             }
@@ -806,13 +835,13 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(config)
             var list = arrayListOf<Any>()
-            val filtro: String? = call.argument("id")
+            val campo: String? = call.argument("campo")
             lateinit var listResult: RealmResults<configuration>;
             
-            if(filtro.isNullOrEmpty()) {
+            if (campo.isNullOrBlank()) {
                 listResult = realm.where<configuration>().findAll()
             } else {
-                listResult = realm.where<configuration>().equalTo("_id", ObjectId(filtro)).findAll()
+                listResult = filterResults(call, realm.where<configuration>()) as RealmResults<configuration>
             }
 
             listResult.forEach {
@@ -865,7 +894,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         if (!last_name.isNullOrBlank()) confi.last_name = last_name
                         if (!language.isNullOrBlank()) confi.language = language
                         if (!timezone.isNullOrBlank()) confi.timezone = timezone
-                        if (!subscription.isNullOrEmpty()) {
+                        if (subscription != null) {
                             subscription.forEach {
                                 realm_list.add(
                                     configuration_subscription(it[0],it[1])
@@ -976,13 +1005,13 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(config)
             var list = arrayListOf<Any>()
-            val filtro: String? = call.argument("id")
+            val campo: String? = call.argument("campo")
             lateinit var listResult: RealmResults<text_suggestion>;
             
-            if(filtro.isNullOrEmpty()) {
+            if (campo.isNullOrBlank()) {
                 listResult = realm.where<text_suggestion>().findAll()
             } else {
-                listResult = realm.where<text_suggestion>().equalTo("_id", ObjectId(filtro)).findAll()
+                listResult = filterResults(call, realm.where<text_suggestion>()) as RealmResults<text_suggestion>
             }
 
             listResult.forEach {
@@ -1081,6 +1110,63 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
+    fun filterResults(call: MethodCall, query: RealmQuery<*>) : RealmResults<*> {
+        val campo: String? = call.argument("campo")
+        val operadorLogico: String? = call.argument("operadorLogico")
+        
+        if (campo.isNullOrBlank()) return query.findAll()
+        
+        try {
+            when(operadorLogico) {
+                "equals" -> {
+                    val valor: String? = call.argument("valor")
+                    if (!valor.isNullOrBlank()) {
+                        if (objectIdProperties.contains(campo)) return query.equalTo(campo, ObjectId(valor)).findAll()
+
+                        return query.equalTo(campo, valor).findAll()
+                    }
+                }
+                "like" -> {
+                    val valor: String? = call.argument("valor")
+                    if (!valor.isNullOrBlank()) {
+                        return query.like(campo, valor).findAll()
+                    }
+                }
+                "greater" -> {
+                    val valor: Int? = call.argument("valor")
+                    if (valor != null) {
+                        return query.greaterThan(campo, valor).findAll()
+                    }
+                }
+                "lesser" -> {
+                    val valor: Int? = call.argument("valor")
+                    if (valor != null) {
+                        return query.lessThan(campo, valor).findAll()
+                    }
+                }
+                "beetwen" -> {
+                    val valor: List<Int>? = call.argument("valor")
+                    if (valor != null && !valor.isEmpty()) {
+                        return query.between(campo, valor[0], valor[1]).findAll()
+                    }
+                }
+                "notNull" -> {
+                    return query.isNotNull(campo).findAll()
+                }
+                // "inList" -> {
+                //     val valor: List<String>? = call.argument("valor")
+                //     if (valor != null && !valor.isEmpty()) {
+                //         return query.`in`(campo, valor).findAll()
+                //     }
+                // }
+                else -> return query.findAll()
+            }
+            return query.findAll()
+        } catch (E : Exception) {
+            Log.d("Erro", E.toString())
+            return query.findAll()
+        }
+    }
 
     class DownloadChanges(val session: SyncSession) : Runnable {
         override fun run() {
