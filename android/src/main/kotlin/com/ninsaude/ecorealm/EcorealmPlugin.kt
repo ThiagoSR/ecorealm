@@ -67,6 +67,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.setLogLevel(Log.DEBUG);
         when (call.method) {
             "init" -> init(result)
+            "register" -> register(call, result)
             "logIn" -> logIn(call, result)
             "logInGoogle" -> logInGoogle(call, result)
             "logOut" -> logOut(result)
@@ -121,6 +122,30 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         
         Log.d("session", "cabou de initar");
         return config;
+    }
+
+    fun register(call: MethodCall, result: Result) {
+        Log.d("login", "initou");
+        val username: String? = call.argument("username")
+        val password: String? = call.argument("password")
+
+        if (username.isNullOrBlank() || password.isNullOrBlank()) {
+            result.error("403", "Nenhuma credencial informada", "Informe email e senha do usuario")
+        } else {
+            app.emailPassword.registerUserAsync(username, password) {
+                if (it.isSuccess) {
+                    result.success(true)
+                } else {
+                    if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
+                        result.error("408","Sem conexão", "Não há conexão com a internet")
+                    } else {
+                        result.success(false)
+                    }
+                }
+            }
+        }
+
+        Log.d("login", "cabou de initar");
     }
 
     fun logIn(call: MethodCall, result: Result) {

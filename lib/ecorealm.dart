@@ -27,6 +27,22 @@ class Ecorealm {
         return await _channel.invokeMethod("init");
     }
 
+    static Future<bool> register({
+        String username,
+        String password
+    }) async {
+        return await _channel.invokeMethod(
+            "register",
+            {
+                "username": username,
+                "password": password
+            }
+        ).onError((error, stackTrace) {
+            print("Sem conexão");
+            return false;
+        });
+    }
+
     static Future<bool> logIn({
         String username,
         String password
