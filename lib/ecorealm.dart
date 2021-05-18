@@ -65,12 +65,20 @@ class Ecorealm {
         return await _channel.invokeMethod(
             "logInGoogle",
             {
-                "token": token
+                "token": token,
+                "method": "auth"
             }
-        ).onError((error, stackTrace) {
-            print("Sem conexão");
-            return false;
-        });
+        ) || await _channel.invokeMethod(
+            "logInGoogle",
+            {
+                "token": token,
+                "method": "id"
+            }
+        );
+        // ).onError((error, stackTrace) {
+        //     print("Sem conexão");
+        //     return false;
+        // });
     }
 
     static Future<bool> logOut() async {

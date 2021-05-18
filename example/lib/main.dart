@@ -7,6 +7,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:ecorealm/ecorealm.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google';
 // import 'package:http/http.dart' as http;
 
 void main() {
@@ -498,13 +499,32 @@ class _MyAppState extends State<MyApp> {
                                             print(_googleSignIn.currentUser.displayName);
                                             print(await _googleSignIn.currentUser.authHeaders);
                                                 await _googleSignIn.currentUser.authentication.then((value) async {
-                                                    print(value.idToken);
                                                     print(value.accessToken);
+                                                    print(value.idToken);
                                                     print(value.serverAuthCode);
-                                                    print(value.hashCode);
-                                                    print(await Ecorealm.logInGoogle(
-                                                        token: value.serverAuthCode
-                                                    ));
+                                                    // if (await Ecorealm.logInGoogle(
+                                                    //     token: value.serverAuthCode
+                                                    // )) {
+                                                    //     print('serverAuthCode');
+                                                    // }
+
+                                                    // if (await Ecorealm.logInGoogle(
+                                                    //     token: value.hashCode.toString()
+                                                    // )) {
+                                                    //     print('hashCode');
+                                                    // }
+
+                                                    // if (await Ecorealm.logInGoogle(
+                                                    //     token: value.idToken
+                                                    // )) {
+                                                    //     print('idToken');
+                                                    // }
+
+                                                    // if (await Ecorealm.logInGoogle(
+                                                    //     token: value.accessToken
+                                                    // )) {
+                                                    //     print('accessToken');
+                                                    // }
                                                 }
                                             );
                                         }

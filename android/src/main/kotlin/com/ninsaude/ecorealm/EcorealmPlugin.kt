@@ -68,6 +68,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "init" -> init(result)
             "register" -> register(call, result)
+            "isLoggedIn" -> isLoggedIn(result)
             "logIn" -> logIn(call, result)
             "logInGoogle" -> logInGoogle(call, result)
             "logOut" -> logOut(result)
@@ -105,6 +106,12 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         partitionKey = app.currentUser()?.id
         result.success(app.currentUser() != null)
         Log.d("init", "cabou de initar");
+        // Realm.setDefaultConfiguration()
+        // Realm.removeDefaultConfiguration()
+        // app.sync.getSession(config).start()
+        // app.sync.getSession(config).stop()
+        // Realm.getInstance(config).copyToRealm(p0, p1)
+        // Realm.getInstance(config).copyToRealm(p0, p1)    
     }
 
     fun sessionInit() : SyncConfiguration? {
@@ -146,6 +153,10 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
 
         Log.d("login", "cabou de initar");
+    }
+
+    fun isLoggedIn(result: Result) {
+        result.success(app.currentUser() != null)
     }
 
     fun logIn(call: MethodCall, result: Result) {
@@ -194,18 +205,37 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
     fun logInGoogle(call: MethodCall, result: Result) {
         val token: String? = call.argument("token")
+        val method: String? = call.argument("method")
         if (!token.isNullOrBlank()){
             Log.d("Token", token)
-            app.loginAsync(Credentials.google(token, GoogleAuthType.ID_TOKEN)) {
-                if (it.isSuccess) {
-                    sessionInit()
-                    partitionKey = app.currentUser()?.id
-                    result.success(true)
-                } else {
-                    if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
-                        result.error("408","Sem conexão", "Não há conexão com a internet")
+            if (method == "id") {
+                Log.d("id",":D")
+                app.loginAsync(Credentials.google(token, GoogleAuthType.ID_TOKEN)) {
+                    if (it.isSuccess) {
+                        sessionInit()
+                        partitionKey = app.currentUser()?.id
+                        result.success(true)
                     } else {
-                        result.success(false)
+                        if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
+                            result.error("408","Sem conexão", "Não há conexão com a internet")
+                        } else {
+                            result.success(false)
+                        }
+                    }
+                }
+            } else {
+                Log.d("o outro",":D")
+                app.loginAsync(Credentials.google(token, GoogleAuthType.AUTH_CODE)) {
+                    if (it.isSuccess) {
+                        sessionInit()
+                        partitionKey = app.currentUser()?.id
+                        result.success(true)
+                    } else {
+                        if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
+                            result.error("408","Sem conexão", "Não há conexão com a internet")
+                        } else {
+                            result.success(false)
+                        }
                     }
                 }
             }
