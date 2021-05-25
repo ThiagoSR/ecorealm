@@ -2,6 +2,7 @@
 import 'dart:async';
                        
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 enum RealmLogicalOperator {
@@ -10,21 +11,42 @@ enum RealmLogicalOperator {
     greater,
     lesser,
     beetwen,
-    notNull,
-    // inList
+    notNull
+}
+
+enum RealmConnectionType {
+    wifi,
+    mobile,
+    unconnected
 }
 
 class Ecorealm {
     static const MethodChannel _channel =
         const MethodChannel('ecorealm');
 
-    static Future<String> get platformVersion async {
-        final String version = await _channel.invokeMethod('getPlatformVersion');
-        return version;
+    static Future<RealmConnectionType> get connectionType async {
+        switch(await _channel.invokeMethod('getConnectionType')) {
+            case 0: 
+                return RealmConnectionType.unconnected;
+            case 1:
+                return RealmConnectionType.wifi;
+            case 2:
+                return RealmConnectionType.mobile;
+            default:
+                return RealmConnectionType.unconnected;
+        }
     }
 
     static Future<bool> init() async {
         return await _channel.invokeMethod("init");
+    }
+
+    static Future<bool> stopSync() async {
+        return await _channel.invokeMethod("stopSync");
+    }
+
+    static Future<bool> startSync() async {
+        return await _channel.invokeMethod("startSync");
     }
 
     static Future<bool> register({
@@ -43,10 +65,15 @@ class Ecorealm {
         });
     }
 
+    static Future<bool> isLoggedIn() async {
+        return await _channel.invokeMethod("isLoggedIn");
+    }
+
     static Future<bool> logIn({
         String username,
         String password
     }) async {
+        print('loginlib');
         return await _channel.invokeMethod(
             "logIn",
             {
@@ -102,7 +129,7 @@ class Ecorealm {
             'listCustomer',
             {
                 "campo": campo,
-                "logicalOperator": logicalOperator,
+                "logicalOperator": _operador(logicalOperator),
                 "valor": valor, 
             }
             )
@@ -187,12 +214,12 @@ class Ecorealm {
             'listAppointment',
             {
                 "campo": campo,
-                "logicalOperator": logicalOperator,
+                "logicalOperator": _operador(logicalOperator),
                 "valor": valor, 
             }
             )
             .onError((error, stackTrace) {
-                print('erro');
+                print(error);
                 return [];
             });
     }
@@ -256,7 +283,7 @@ class Ecorealm {
             'listRecord',
             {
                 "campo": campo,
-                "logicalOperator": logicalOperator,
+                "logicalOperator": _operador(logicalOperator),
                 "valor": valor, 
             }
             )
@@ -329,11 +356,12 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic valor
     }) async {
+        
         return await _channel.invokeMethod(
             'listConfiguration',
             {
                 "campo": campo,
-                "logicalOperator": logicalOperator,
+                "logicalOperator": _operador(logicalOperator),
                 "valor": valor, 
             }
         )
@@ -409,7 +437,7 @@ class Ecorealm {
             'listTextSuggestion',
             {
                 "campo": campo,
-                "logicalOperator": logicalOperator,
+                "logicalOperator": _operador(logicalOperator),
                 "valor": valor, 
             }
             )
@@ -460,4 +488,31 @@ class Ecorealm {
         );
     }
 
+    static String _operador(RealmLogicalOperator operador) {
+        String lOperador = '';
+        switch(operador) {
+            case RealmLogicalOperator.equals:
+                lOperador = 'equals';
+            break;
+            case RealmLogicalOperator.like:
+                lOperador = 'like';
+            break;
+            case RealmLogicalOperator.greater:
+                lOperador = 'greater';
+            break;
+            case RealmLogicalOperator.lesser:
+                lOperador = 'lesser';
+            break;
+            case RealmLogicalOperator.beetwen:
+                lOperador = 'beetwen';
+            break;
+            case RealmLogicalOperator.notNull:
+                lOperador = 'notNull';
+            break;
+            default:
+                lOperador = 'equals';
+            break; 
+        }
+        return lOperador;
+    }
 }

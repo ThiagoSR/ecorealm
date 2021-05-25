@@ -9,6 +9,9 @@ import com.ninsaude.ecorealm.text_suggestion
 
 import androidx.annotation.NonNull
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -52,8 +55,6 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
     private lateinit var app: App
     private lateinit var context: Context
-    private var partitionKey: String? = null
-    private var config: SyncConfiguration? = null
     private var objectIdProperties: List<String> = listOf("_id", "customer")
     private var appId: String = "ecodoc-wgion"
 
@@ -64,16 +65,23 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
-        Log.setLogLevel(Log.DEBUG);
+        Log.setLogLevel(Log.DEBUG)
         when (call.method) {
+            "getConnectionType" -> getConnectionType(result)
             "init" -> init(result)
+            "stopSync" -> stopSync(result)
+            "startSync" -> startSync(result)
             "register" -> register(call, result)
-            "isLoggedIn" -> isLoggedIn(result)
+            "isLoggedIn" -> {
+                Log.d("isLoggedIn", "teste")
+                if(isLoggedIn()) 
+                    result.success(true)
+                else
+                    result.success(false)
+            }
             "logIn" -> logIn(call, result)
             "logInGoogle" -> logInGoogle(call, result)
             "logOut" -> logOut(result)
-            "upload" -> upload(result)
-            "download" -> download(result)
             "addAppointment" -> addAppointment(call, result)
             "updateAppointment" -> updateAppointment(call, result)
             "deleteAppointment" -> deleteAppointment(call, result)
@@ -98,41 +106,75 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    // Instancia o realm e define a partition key e retorna se o usuario está logado
-    fun init(result: Result) {
-        Log.d("init", "initou");
-        Realm.init(context)
-        app = App(AppConfiguration.Builder(appId).build())
-        partitionKey = app.currentUser()?.id
-        result.success(app.currentUser() != null)
-        Log.d("init", "cabou de initar");
-        // Realm.setDefaultConfiguration()
-        // Realm.removeDefaultConfiguration()
-        // app.sync.getSession(config).start()
-        // app.sync.getSession(config).stop()
-        // Realm.getInstance(config).copyToRealm(p0, p1)
-        // Realm.getInstance(config).copyToRealm(p0, p1)    
+    fun getConnectionType(result: Result) {
+        val connectivityManager : ConnectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        var connection : Network? = connectivityManager.activeNetwork
+        var capabilities : NetworkCapabilities? = connectivityManager.getNetworkCapabilities(connection)
+
+        if (connection != null && capabilities != null) {
+            when {
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> result.success(1)
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> result.success(2)
+                else -> result.success(0)
+            }
+        } else {
+            result.success(0)
+        }
     }
 
-    fun sessionInit() : SyncConfiguration? {
-        Log.d("session", "initou");
-        if (app.currentUser() == null) 
-            return null
+    // Instancia o realm e define a partition key e retorna se o usuario está logado
+    fun init(result: Result) {
+        Realm.init(context)
+        app = App(AppConfiguration.Builder(appId).build())
 
-        if (config == null) { 
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
-            config = SyncConfiguration.Builder(app.currentUser(), partitionKey)
-                .allowQueriesOnUiThread(true)
-                .allowWritesOnUiThread(true)
-                .build()
+        if (isLoggedIn()) {
+            Log.d("gdc", Realm.getDefaultConfiguration()?.path + ":(")
+            result.success(true)
+        } else {
+            result.success(false)
         }
-        
-        Log.d("session", "cabou de initar");
-        return config;
+    }
+
+    fun sessionInit() : RealmConfiguration? {
+        if (!isLoggedIn())
+            return null
+            
+        if (Realm.getDefaultConfiguration() == null)
+            Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
+
+        return Realm.getDefaultConfiguration()
+    }
+
+    fun stopSync(result: Result) {
+        if (sessionInit() != null) {
+            try { 
+                app.sync.getSession(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build()).stop()
+                result.success(true)
+            } catch (e : Exception) {
+                result.success(false)
+            }
+        } else {
+            result.success(false)
+        }
+    }
+
+    fun startSync(result: Result) {
+        if (sessionInit() != null) {
+            try {
+                val syncSession = app.sync.getOrCreateSession(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build());
+                syncSession.start();
+                DownloadChanges(syncSession);
+                UploadChanges(syncSession);
+                result.success(true)
+            } catch (e : Exception) {
+                result.success(false)
+            }
+        } else {
+            result.success(false)
+        }
     }
 
     fun register(call: MethodCall, result: Result) {
-        Log.d("login", "initou");
         val username: String? = call.argument("username")
         val password: String? = call.argument("password")
 
@@ -151,19 +193,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
             }
         }
-
-        Log.d("login", "cabou de initar");
     }
 
-    fun isLoggedIn(result: Result) {
-        result.success(app.currentUser() != null)
+    fun isLoggedIn() : Boolean {
+        return app.currentUser() != null
     }
 
     fun logIn(call: MethodCall, result: Result) {
-        Log.d("login", "initou");
         val username: String? = call.argument("username")
         val password: String? = call.argument("password")
-
+        Log.d("usuario", username + " olhaai");
         if (username.isNullOrBlank() || password.isNullOrBlank()) {
             result.error("403", "Nenhuma credencial informada", "Informe email e senha do usuario")
         } else {
@@ -174,33 +213,33 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 )
             ) {
                 if (it.isSuccess) {
-                    sessionInit()
-                    partitionKey = app.currentUser()?.id
-                    result.success(true)
+                    Log.d("Usuario atual", app.currentUser()?.id + " :|")
+                    Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
+                    result.success(sessionInit() != null)
                 } else {
+                    Log.d("Erro Login", it.error.toString());
                     if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
                         result.error("408","Sem conexão", "Não há conexão com a internet")
                     } else {
+                        Log.d("erroLogin", it.error.toString())
                         result.success(false)
                     }
                 }
             }
         }
-        Log.d("login", "cabou de initar");
     }
 
     fun logOut(result: Result) {
-        Log.d("logout", "initou");
         app.currentUser()?.logOutAsync() {
             if (it.isSuccess) {
-                config = null
-                partitionKey = null
+                Realm.removeDefaultConfiguration();
                 result.success(true)
             } else {
+                Log.d("erroLogout", it.error.toString())
+                Log.d("logout", it.error.toString())
                 result.success(false)
             }
         }
-        Log.d("logout", "cabou de initar");
     }
 
     fun logInGoogle(call: MethodCall, result: Result) {
@@ -213,7 +252,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 app.loginAsync(Credentials.google(token, GoogleAuthType.ID_TOKEN)) {
                     if (it.isSuccess) {
                         sessionInit()
-                        partitionKey = app.currentUser()?.id
+                        val partitionKey = app.currentUser()?.id
                         result.success(true)
                     } else {
                         if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
@@ -228,7 +267,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 app.loginAsync(Credentials.google(token, GoogleAuthType.AUTH_CODE)) {
                     if (it.isSuccess) {
                         sessionInit()
-                        partitionKey = app.currentUser()?.id
+                        val partitionKey = app.currentUser()?.id
                         result.success(true)
                     } else {
                         if (it.error.errorCode == ErrorCode.NETWORK_IO_EXCEPTION) {
@@ -250,21 +289,21 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun upload(result: Result) {
-        val session: SyncSession = app.getSync().getSession(config)
-        val task: FutureTask<String> = FutureTask(UploadChanges(session), "test")
-        val executorService: ExecutorService = Executors.newFixedThreadPool(2)
-        executorService.execute(task)
-        result.success(true)
-    }
+    // fun upload(result: Result) {
+    //     val session: SyncSession = app.getSync().getSession(config)
+    //     val task: FutureTask<String> = FutureTask(UploadChanges(session), "test")
+    //     val executorService: ExecutorService = Executors.newFixedThreadPool(2)
+    //     executorService.execute(task)
+    //     result.success(true)
+    // }
 
-    fun download(result: Result) {
-        val session: SyncSession = app.getSync().getSession(config)
-        val task: FutureTask<String> = FutureTask(DownloadChanges(session), "test")
-        val executorService: ExecutorService = Executors.newFixedThreadPool(2)
-        executorService.execute(task)
-        result.success(true)
-    }
+    // fun download(result: Result) {
+    //     val session: SyncSession = app.getSync().getSession(config)
+    //     val task: FutureTask<String> = FutureTask(DownloadChanges(session), "test")
+    //     val executorService: ExecutorService = Executors.newFixedThreadPool(2)
+    //     executorService.execute(task)
+    //     result.success(true)
+    // }
 
 
 
@@ -272,14 +311,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun addCustomer(call: MethodCall, result: Result) {
         Log.d("addcust", "initou")
         if (sessionInit() != null) {
-            val realmThread = Realm.getInstance(config)
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
+            val realmThread = Realm.getInstance(sessionInit()!!)
+            val partitionKey = app.currentUser()?.id.toString()
             var cust: customer = customer()
             
             val first_name: String? = call.argument("firstName")
             val last_name: String? = call.argument("lastName")
             val avatar: List<Int>? = call.argument("avatar")
-            val avatarByte: ArrayList<Byte> = arrayListOf();
+            val avatarByte: ArrayList<Byte> = arrayListOf()
             val birthday: Long? = call.argument("birthday")
             val email: String? = call.argument("email")
             val observation: String? = call.argument("observation")
@@ -289,7 +328,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             realmThread.executeTransactionAsync( Realm.Transaction { transactionRealm ->
                 cust.`_id` = ObjectId()
-                cust.`_partition` = partitionKey!!
+                cust.`_partition` = partitionKey
                 cust.first_name = first_name!!
                 cust.last_name = last_name!!
                 if (avatar != null) {
@@ -317,18 +356,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success("")
             })
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("addcust", "acabou de inita")
     }
 
     fun listCustomer(call: MethodCall, result: Result) {
-        Log.d("listcust", "initou");
+        Log.d("listcust", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(config)
+            val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("campo")
-            lateinit var listResult: RealmResults<customer>;
+            lateinit var listResult: RealmResults<customer>
             
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<customer>().findAll()
@@ -337,7 +376,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             }
 
             listResult.forEach {
-                var avatarByte = it.avatar;
+                var avatarByte = it.avatar
                 val avatarInt = arrayListOf<Any>()
                 
                 if (avatarByte != null) {
@@ -362,9 +401,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             result.success(list)
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        Log.d("listcust", "cabou de initar");
+        Log.d("listcust", "cabou de initar")
     }
 
     fun updateCustomer(call: MethodCall, result: Result) {
@@ -374,12 +413,12 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
                 
                 val first_name: String? = call.argument("firstName")
                 val last_name: String? = call.argument("lastName")
                 val avatar: List<Int>? = call.argument("avatar")
-                val avatarByte: ArrayList<Byte> = arrayListOf();
+                val avatarByte: ArrayList<Byte> = arrayListOf()
                 val birthday: Long? = call.argument("birthday")
                 val email: String? = call.argument("email")
                 val observation: String? = call.argument("observation")
@@ -422,7 +461,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("updatecust", "acabou de inita")
     }
@@ -434,7 +473,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 realmThread.executeTransaction(Realm.Transaction { transactionRealm ->
                     var cust: customer? = transactionRealm.where<customer>().equalTo("_id", ObjectId(id)).findFirst()
@@ -453,7 +492,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("deletecust", "acabou de inita")
     }
@@ -462,10 +501,10 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
     fun addAppointment(call: MethodCall, result: Result) {
-        Log.d("addapp", "initou");
+        Log.d("addapp", "initou")
         if (sessionInit() != null) {
-            val realmThread = Realm.getInstance(config)
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
+            val realmThread = Realm.getInstance(sessionInit()!!)
+            val partitionKey = app.currentUser()?.id.toString()
             var appoint: appointment = appointment()
 
             val customer: String? = call.argument("customer")
@@ -481,7 +520,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             val status: String? = call.argument("status")
 
             realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
-                appoint.`_partition` = partitionKey!!
+                appoint.`_partition` = partitionKey
                 appoint.`_id` = ObjectId()
                 if (!customer.isNullOrBlank()) appoint.customer = transactionRealm.where<customer>().equalTo("_id", ObjectId(customer)).findFirst()
                 appoint.date_time = Date(date_time!!)
@@ -501,20 +540,19 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success("")
             })
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         
-        Log.d("addapp", "cabou de initar");
+        Log.d("addapp", "cabou de initar")
     }
 
     fun listAppointment(call: MethodCall, result: Result) {
-        Log.d("listapp", "initou");
+        Log.d("listapp", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(config)
+            val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("campo")
-            lateinit var listResult: RealmResults<appointment>;
-            
+            lateinit var listResult: RealmResults<appointment>
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<appointment>().findAll()
             } else {
@@ -534,9 +572,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             result.success(list)
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        Log.d("listapp", "cabou de initar");
+        Log.d("listapp", "cabou de initar")
     }
 
     fun updateAppointment(call: MethodCall, result: Result) {
@@ -546,7 +584,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
                 
                 val customer: String? = call.argument("customer")
                 val date_time: Long? = call.argument("date")
@@ -586,7 +624,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("updateappoint", "acabou de inita")
     }
@@ -598,7 +636,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 realmThread.executeTransaction(Realm.Transaction { transactionRealm ->
                     var appoint: appointment? = transactionRealm.where<appointment>().equalTo("_id", ObjectId(id)).findFirst()
@@ -617,7 +655,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("deleteappoint", "acabou de inita")
     }
@@ -628,8 +666,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun addRecord(call: MethodCall, result: Result) {
         Log.d("addrecor", "intou")
         if (sessionInit() != null) {
-            val realmThread = Realm.getInstance(config)
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
+            val realmThread = Realm.getInstance(sessionInit()!!)
+            val partitionKey = app.currentUser()?.id.toString()
             var recor: record = record()
 
             val date: Long? = call.argument("dateTime")
@@ -639,7 +677,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             val realm_tags: RealmList<String> = RealmList()
             val content_text: String? = call.argument("contentText")
             val content_bin: List<Int>? = call.argument("contentBin")
-            val content_bin_byte: ArrayList<Byte> = arrayListOf();
+            val content_bin_byte: ArrayList<Byte> = arrayListOf()
             val customer: String? = call.argument("customer")
 
             realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
@@ -648,7 +686,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
     
                 recor.`_id` = ObjectId()
-                recor.`_partition` = partitionKey!!
+                recor.`_partition` = partitionKey
                 recor.date_time = Date(date!!)
                 recor.description = description!!
                 recor.source = source!!
@@ -680,18 +718,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success("")
             })
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("addrecor", "acabou de inita")
     }
 
     fun listRecord(call: MethodCall ,result: Result) {
-        Log.d("listrecor", "initou");
+        Log.d("listrecor", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(config)
+            val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("campo")
-            lateinit var listResult: RealmResults<record>;
+            lateinit var listResult: RealmResults<record>
             
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<record>().findAll()
@@ -701,7 +739,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             listResult.forEach {
                 var avatarByte: List<Byte>? = null
-                val content = it.content;
+                val content = it.content
 
                 if (content != null){
                     val bin  = content.binary
@@ -728,9 +766,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             result.success(list)
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        Log.d("listrecor", "cabou de initar");
+        Log.d("listrecor", "cabou de initar")
     }
 
     fun updateRecord(call: MethodCall, result: Result) {
@@ -740,7 +778,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
                 
                 val date: Long? = call.argument("dateTime")
                 val description: String? = call.argument("description")
@@ -749,7 +787,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 val realm_tags: RealmList<String> = RealmList()
                 val content_text: String? = call.argument("contentText")
                 val content_bin: List<Int>? = call.argument("contentBin")
-                val content_bin_byte: ArrayList<Byte> = arrayListOf();
+                val content_bin_byte: ArrayList<Byte> = arrayListOf()
                 val customer: String? = call.argument("customer")
 
                 realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
@@ -797,7 +835,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("updaterecor", "acabou de inita")
     }
@@ -809,7 +847,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
                 realmThread.executeTransaction(Realm.Transaction { transactionRealm ->
                     var recor: record? = transactionRealm.where<record>().equalTo("_id", ObjectId(id)).findFirst()
                     if (recor != null) {
@@ -827,7 +865,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("deleterecor", "acabou de inita")
     }
@@ -838,8 +876,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun addConfiguration(call: MethodCall, result: Result) {
         Log.d("addconfig", "intou")
         if (sessionInit() != null) {
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
-            val realmThread = Realm.getInstance(config)
+            val partitionKey = app.currentUser()?.id.toString()
+            val realmThread = Realm.getInstance(sessionInit()!!)
             var confi: configuration = configuration()
 
             val email: String? = call.argument("email")
@@ -859,7 +897,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
     
                 confi.`_id` = ObjectId()
-                confi.`_partition` = partitionKey!!
+                confi.`_partition` = partitionKey
                 confi.email = email!!
                 confi.first_name = first_name!!
                 confi.last_name = last_name!!
@@ -880,18 +918,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success("")
             })
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("addconfig", "acabou de inita")
     }
 
     fun listConfiguration(call: MethodCall ,result: Result) {
-        Log.d("listconfig", "initou");
+        Log.d("listconfig", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(config)
+            val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("campo")
-            lateinit var listResult: RealmResults<configuration>;
+            lateinit var listResult: RealmResults<configuration>
             
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<configuration>().findAll()
@@ -918,9 +956,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             result.success(list)
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        Log.d("listconfig", "cabou de initar");
+        Log.d("listconfig", "cabou de initar")
     }
 
     fun updateConfiguration(call: MethodCall, result: Result) {
@@ -930,7 +968,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 val email: String? = call.argument("email")
                 val first_name: String? = call.argument("firstName")
@@ -976,7 +1014,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("updateconfig", "acabou de inita")
     }
@@ -988,7 +1026,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 realmThread.executeTransaction(Realm.Transaction { transactionRealm ->
                     var confi: configuration? = transactionRealm.where<configuration>().equalTo("_id", ObjectId(id)).findFirst()
@@ -1007,7 +1045,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("deleteconfig", "acabou de inita")
     }
@@ -1018,8 +1056,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun addTextSuggestion(call: MethodCall, result: Result) {
         Log.d("addsuggestion", "intou")
         if (sessionInit() != null) {
-            val realmThread = Realm.getInstance(config)
-            if (partitionKey.isNullOrEmpty()) partitionKey = app.currentUser()?.id.toString()
+            val realmThread = Realm.getInstance(sessionInit()!!)
+            val partitionKey = app.currentUser()?.id.toString()
             var textsugg: text_suggestion = text_suggestion()
             val from: String? = call.argument("from")
             val to: String? = call.argument("to")
@@ -1033,7 +1071,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             realmThread.executeTransactionAsync( Realm.Transaction { transactionRealm ->               
                 textsugg.`_id` = ObjectId()
-                textsugg.`_partition` = partitionKey!!
+                textsugg.`_partition` = partitionKey
                 textsugg.from = from!!
                 textsugg.to = to!!
                 textsugg.counter = counter!!.toLong()
@@ -1050,18 +1088,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success("")
             })
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("addsuggestion", "acabou de inita")
     }
 
     fun listTextSuggestion(call: MethodCall ,result: Result) {
-        Log.d("listsuggestion", "initou");
+        Log.d("listsuggestion", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(config)
+            val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("campo")
-            lateinit var listResult: RealmResults<text_suggestion>;
+            lateinit var listResult: RealmResults<text_suggestion>
             
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<text_suggestion>().findAll()
@@ -1080,9 +1118,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
             result.success(list)
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        Log.d("listsuggestion", "cabou de initar");
+        Log.d("listsuggestion", "cabou de initar")
     }
 
     fun updateTextSuggestion(call: MethodCall, result: Result) {
@@ -1092,7 +1130,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 val from: String? = call.argument("from")
                 val to: String? = call.argument("to")
@@ -1127,7 +1165,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("updatesuggestion", "acabou de inita")
     }
@@ -1139,7 +1177,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             if (id.isNullOrBlank()) {
                 result.success(false)
             } else {
-                val realmThread = Realm.getInstance(config)
+                val realmThread = Realm.getInstance(sessionInit()!!)
 
                 realmThread.executeTransaction(Realm.Transaction { transactionRealm ->
                     var textsugg: text_suggestion? = transactionRealm.where<text_suggestion>().equalTo("_id", ObjectId(id)).findFirst()
@@ -1158,7 +1196,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 })
             }
         } else {
-            result.error("403", "Nenhum usuário conectado", "Conecte um usuario");
+            result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
         Log.d("deletesuggestion", "acabou de inita")
     }
@@ -1167,14 +1205,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
     fun filterResults(call: MethodCall, query: RealmQuery<*>) : RealmResults<*> {
         val campo: String? = call.argument("campo")
-        val operadorLogico: String? = call.argument("operadorLogico")
+        val operadorLogico: String? = call.argument("logicalOperator")
         
+        Log.d("Campo", "D: " + campo)
+        Log.d("OperadorLógico", "D: " + operadorLogico)
+
         if (campo.isNullOrBlank()) return query.findAll()
         
         try {
             when(operadorLogico) {
                 "equals" -> {
                     val valor: String? = call.argument("valor")
+                    Log.d("Valor", "D: " + valor)
                     if (!valor.isNullOrBlank()) {
                         if (objectIdProperties.contains(campo)) return query.equalTo(campo, ObjectId(valor)).findAll()
 
@@ -1183,24 +1225,28 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
                 "like" -> {
                     val valor: String? = call.argument("valor")
+                    Log.d("Valor", "D: " + valor)
                     if (!valor.isNullOrBlank()) {
                         return query.like(campo, valor).findAll()
                     }
                 }
                 "greater" -> {
                     val valor: Int? = call.argument("valor")
+                    Log.d("Valor", "D: " + valor.toString())
                     if (valor != null) {
                         return query.greaterThan(campo, valor).findAll()
                     }
                 }
                 "lesser" -> {
                     val valor: Int? = call.argument("valor")
+                    Log.d("Valor", "D: " + valor.toString())
                     if (valor != null) {
                         return query.lessThan(campo, valor).findAll()
                     }
                 }
                 "beetwen" -> {
                     val valor: List<Int>? = call.argument("valor")
+                    Log.d("Valor", "D: " + valor.toString())
                     if (valor != null && !valor.isEmpty()) {
                         return query.between(campo, valor[0], valor[1]).findAll()
                     }

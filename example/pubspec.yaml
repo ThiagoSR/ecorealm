@@ -24,18 +24,18 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
   http: ^0.13.1
-  google_sign_in:
-    git:
-      url: https://github.com/zeeshanhussain/plugins.git
-      path: packages/google_sign_in/google_sign_in
-      ref: fix-server-auth-code-android
+#   google_sign_in:
+#     git:
+#       url: https://github.com/zeeshanhussain/plugins.git
+#       path: packages/google_sign_in/google_sign_in
+#       ref: fix-server-auth-code-android
 
-dependency_overrides:
-  google_sign_in_platform_interface:
-    git:
-      url: https://github.com/zeeshanhussain/plugins.git
-      path: packages/google_sign_in/google_sign_in_platform_interface
-      ref: fix-server-auth-code-android
+# dependency_overrides:
+#   google_sign_in_platform_interface:
+#     git:
+#       url: https://github.com/zeeshanhussain/plugins.git
+#       path: packages/google_sign_in/google_sign_in_platform_interface
+#       ref: fix-server-auth-code-android
       
 dev_dependencies:
   flutter_test:

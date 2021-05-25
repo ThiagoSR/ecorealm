@@ -8,21 +8,6 @@ import io.realm.annotations.PrimaryKey
 import io.realm.annotations.Required
 import io.realm.annotations.RealmClass
 
-open class patient(
-    @PrimaryKey var _id: ObjectId? = null,
-    var _partition: String = "",
-    var created_at: Date? = null,
-    var first_name: String? = null
-): RealmObject() {}
-
-open class user(
-    @PrimaryKey var _id: ObjectId? = null,
-    var _partition: String = "",
-    var email: String? = null,
-    @Required
-    var shared: RealmList<String> = RealmList()
-): RealmObject() {}
-
 open class customer(
     @PrimaryKey var _id: ObjectId? = null,
     var _partition: String = "",

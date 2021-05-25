@@ -6,7 +6,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:ecorealm/ecorealm.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+// import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:google';
 // import 'package:http/http.dart' as http;
 
@@ -83,9 +83,33 @@ class _MyAppState extends State<MyApp> {
                                                 _booLogado = !deslogado;
                                             });
                                         } else { 
+                                            print('começando login');
                                             bool logado = await Ecorealm.logIn(
-                                                username: 'thiagospindolarossi159@gmail.com',
-                                                password: 'chopgelado'
+                                                username: 'thiagospindolarossi15409@gmail.com',
+                                                password: '123456'
+                                            );
+                                            print('finalizando login');
+                                            print(logado);
+                                            setState(() {
+                                                _booLogado = logado;
+                                            });
+                                        }
+                                    },
+                                    child: _booLogado ? Text('Deslogar') : Text('Logar'),
+                                ),
+                                SizedBox(height: 10,),
+                                FloatingActionButton(
+                                    onPressed: () async {
+                                        print(_booLogado);
+                                        if (_booLogado) {
+                                            bool deslogado = await Ecorealm.logOut();
+                                            setState(() {
+                                                _booLogado = !deslogado;
+                                            });
+                                        } else { 
+                                            bool logado = await Ecorealm.register(
+                                                username: 'thiagospindolarossi15'+ new Random().nextInt(1000).toString() +'@gmail.com',
+                                                password: '123456'
                                             );
                                             setState(() {
                                                 _booLogado = logado;
@@ -93,6 +117,27 @@ class _MyAppState extends State<MyApp> {
                                         }
                                     },
                                     child: _booLogado ? Text('Deslogar') : Text('Logar'),
+                                ),
+                                SizedBox(height: 10,),
+                                FloatingActionButton(
+                                    onPressed: () async {
+                                        print(await Ecorealm.stopSync());
+                                    },
+                                    child: Text('Stop'),
+                                ),
+                                SizedBox(height: 10,),
+                                FloatingActionButton(
+                                    onPressed: () async {
+                                        print(await Ecorealm.startSync());
+                                    },
+                                    child: Text('Start'),
+                                ),
+                                SizedBox(height: 10,),
+                                FloatingActionButton(
+                                    onPressed: () async {
+                                        print(await Ecorealm.connectionType);
+                                    },
+                                    child: Text('Type'),
                                 )
                             ]
                         )
@@ -107,7 +152,10 @@ class _MyAppState extends State<MyApp> {
                             children: [
                                 ElevatedButton(
                                     onPressed: () async {
-                                        print(await Ecorealm.getCustomers());
+                                        List a = await Ecorealm.getCustomers();
+                                        a.forEach((element) {
+                                            print(element['firstName']);
+                                        });
                                     }, 
                                     child: Text("Listar customer"),
                                     style: ButtonStyle(
@@ -451,13 +499,11 @@ class _MyAppState extends State<MyApp> {
                                 // testes pesquisa
                                 ElevatedButton(
                                     onPressed: () async {
-                                        if (appointment_id != "") {
-                                            print(await Ecorealm.getCustomers(
-                                                campo: 'first_name',
-                                                logicalOperator: RealmLogicalOperator.like,
-                                                valor: 'teste'
-                                            ));
-                                        }
+                                        print(await Ecorealm.getCustomers(
+                                            campo: 'first_name',
+                                            logicalOperator: RealmLogicalOperator.like,
+                                            valor: 'Thiago4' + '*'
+                                        ));
                                     }, 
                                     child: Text("Filtrar nome customer"),
                                     style: ButtonStyle(
@@ -481,58 +527,58 @@ class _MyAppState extends State<MyApp> {
                                 // ),
                                 //TODO gerar SHA1 e colocar no App
                                 ElevatedButton(onPressed: () async {
-                                    GoogleSignIn _googleSignIn = GoogleSignIn(
-                                        clientId: '302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com',
-                                        scopes: [
-                                            'profile',
-                                            'email',
-                                            'openid'
-                                        ],
-                                    );
-                                    if (!await _googleSignIn.isSignedIn()){
-                                        await _googleSignIn.signIn();
-                                        if (await _googleSignIn.isSignedIn()) {
-                                            print(_googleSignIn.clientId);
-                                            print(_googleSignIn.currentUser);
-                                            print(_googleSignIn.currentUser.id);
-                                            print(_googleSignIn.currentUser.email);
-                                            print(_googleSignIn.currentUser.displayName);
-                                            print(await _googleSignIn.currentUser.authHeaders);
-                                                await _googleSignIn.currentUser.authentication.then((value) async {
-                                                    print(value.accessToken);
-                                                    print(value.idToken);
-                                                    print(value.serverAuthCode);
-                                                    // if (await Ecorealm.logInGoogle(
-                                                    //     token: value.serverAuthCode
-                                                    // )) {
-                                                    //     print('serverAuthCode');
-                                                    // }
+                                    // GoogleSignIn _googleSignIn = GoogleSignIn(
+                                    //     clientId: '302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com',
+                                    //     scopes: [
+                                    //         'profile',
+                                    //         'email',
+                                    //         'openid'
+                                    //     ],
+                                    // );
+                                    // if (!await _googleSignIn.isSignedIn()){
+                                    //     await _googleSignIn.signIn();
+                                    //     if (await _googleSignIn.isSignedIn()) {
+                                    //         print(_googleSignIn.clientId);
+                                    //         print(_googleSignIn.currentUser);
+                                    //         print(_googleSignIn.currentUser.id);
+                                    //         print(_googleSignIn.currentUser.email);
+                                    //         print(_googleSignIn.currentUser.displayName);
+                                    //         print(await _googleSignIn.currentUser.authHeaders);
+                                    //             await _googleSignIn.currentUser.authentication.then((value) async {
+                                    //                 print(value.accessToken);
+                                    //                 print(value.idToken);
+                                    //                 print(value.serverAuthCode);
+                                    //                 // if (await Ecorealm.logInGoogle(
+                                    //                 //     token: value.serverAuthCode
+                                    //                 // )) {
+                                    //                 //     print('serverAuthCode');
+                                    //                 // }
 
-                                                    // if (await Ecorealm.logInGoogle(
-                                                    //     token: value.hashCode.toString()
-                                                    // )) {
-                                                    //     print('hashCode');
-                                                    // }
+                                    //                 // if (await Ecorealm.logInGoogle(
+                                    //                 //     token: value.hashCode.toString()
+                                    //                 // )) {
+                                    //                 //     print('hashCode');
+                                    //                 // }
 
-                                                    // if (await Ecorealm.logInGoogle(
-                                                    //     token: value.idToken
-                                                    // )) {
-                                                    //     print('idToken');
-                                                    // }
+                                    //                 // if (await Ecorealm.logInGoogle(
+                                    //                 //     token: value.idToken
+                                    //                 // )) {
+                                    //                 //     print('idToken');
+                                    //                 // }
 
-                                                    // if (await Ecorealm.logInGoogle(
-                                                    //     token: value.accessToken
-                                                    // )) {
-                                                    //     print('accessToken');
-                                                    // }
-                                                }
-                                            );
-                                        }
-                                    } else {
-                                        await _googleSignIn.signOut();
+                                    //                 // if (await Ecorealm.logInGoogle(
+                                    //                 //     token: value.accessToken
+                                    //                 // )) {
+                                    //                 //     print('accessToken');
+                                    //                 // }
+                                    //             }
+                                    //         );
+                                    //     }
+                                    // } else {
+                                    //     await _googleSignIn.signOut();
 
-                                        print('dessingnado');
-                                    }
+                                    //     print('dessingnado');
+                                    // }
                                     
                                 }, child: Text("Guguru"))
                             ]
