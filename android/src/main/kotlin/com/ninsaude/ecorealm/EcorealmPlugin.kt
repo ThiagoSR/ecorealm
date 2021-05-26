@@ -64,6 +64,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         context = flutterPluginBinding.getApplicationContext()
     }
 
+
+    /*
+        MethodCall - where the parameters are stored
+        Result - where the returned value going to be inputted
+    */
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         Log.setLogLevel(Log.DEBUG)
         when (call.method) {
@@ -106,6 +111,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Verify which connection type is currently being used
+
+        Return Int (0 = not connected, 1 - Wi-fi, 2 - Mobile)
+    */
     fun getConnectionType(result: Result) {
         val connectivityManager : ConnectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         var connection : Network? = connectivityManager.activeNetwork
@@ -122,7 +132,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    // Instancia o realm e define a partition key e retorna se o usuario está logado
+    /* 
+        Initialize Realm
+
+        Return Bool
+    */
     fun init(result: Result) {
         Realm.init(context)
         app = App(AppConfiguration.Builder(appId).build())
@@ -135,16 +149,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    fun sessionInit() : RealmConfiguration? {
-        if (!isLoggedIn())
-            return null
-            
-        if (Realm.getDefaultConfiguration() == null)
-            Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
+    /* 
+        Stop realm sync (data will be saved only on device)
 
-        return Realm.getDefaultConfiguration()
-    }
-
+        Return Bool
+    */
     fun stopSync(result: Result) {
         if (sessionInit() != null) {
             try { 
@@ -158,6 +167,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Restart realm sync (data will be saved on device and cloud)
+
+        Return Bool
+    */
     fun startSync(result: Result) {
         if (sessionInit() != null) {
             try {
@@ -174,6 +188,15 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Register a realm user
+
+        Parameters
+            email : String
+            password : String
+
+        Return Bool
+    */
     fun register(call: MethodCall, result: Result) {
         val username: String? = call.argument("username")
         val password: String? = call.argument("password")
@@ -195,10 +218,24 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Returns if the are any users logged in on device
+
+        Return Bool
+    */
     fun isLoggedIn() : Boolean {
         return app.currentUser() != null
     }
 
+    /* 
+        Log in on realm
+
+        Parameters
+            email : String
+            password : String
+
+        Return Bool
+    */
     fun logIn(call: MethodCall, result: Result) {
         val username: String? = call.argument("username")
         val password: String? = call.argument("password")
@@ -229,6 +266,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Log out from realm
+
+        Return Bool
+    */
     fun logOut(result: Result) {
         app.currentUser()?.logOutAsync() {
             if (it.isSuccess) {
@@ -242,6 +284,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /*
+        TODO: Log in on realm using google account
+
+        Parameters
+            authToken : String
+
+        Return Bool
+    */
     fun logInGoogle(call: MethodCall, result: Result) {
         val token: String? = call.argument("token")
         val method: String? = call.argument("method")
@@ -289,25 +339,23 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    // fun upload(result: Result) {
-    //     val session: SyncSession = app.getSync().getSession(config)
-    //     val task: FutureTask<String> = FutureTask(UploadChanges(session), "test")
-    //     val executorService: ExecutorService = Executors.newFixedThreadPool(2)
-    //     executorService.execute(task)
-    //     result.success(true)
-    // }
 
-    // fun download(result: Result) {
-    //     val session: SyncSession = app.getSync().getSession(config)
-    //     val task: FutureTask<String> = FutureTask(DownloadChanges(session), "test")
-    //     val executorService: ExecutorService = Executors.newFixedThreadPool(2)
-    //     executorService.execute(task)
-    //     result.success(true)
-    // }
+    /* 
+        Add customer
 
+        Parameters
+            firstName : String
+            lastName : String
+            avatar : List<Int>? - list of int parsed bytes
+            birthday : Long? - date in unix timestamp
+            email : String?
+            observation: String?
+            phone : String?
+            sex : String?
+            socialName : String
 
-
-
+        Return String (new Customer id)
+    */
     fun addCustomer(call: MethodCall, result: Result) {
         Log.d("addcust", "initou")
         if (sessionInit() != null) {
@@ -361,6 +409,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addcust", "acabou de inita")
     }
 
+    /* 
+        List customer
+
+        Parameters
+            campo : String? - field to filter
+            logicalOperator : String? - filter method
+            valor : Any? - value to filter
+
+        Return List<Customer>
+    */
     fun listCustomer(call: MethodCall, result: Result) {
         Log.d("listcust", "initou")
         if (sessionInit() != null) {
@@ -406,6 +464,23 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listcust", "cabou de initar")
     }
 
+    /* 
+        Update customer
+
+        Parameters
+            id : String - customer indentifier
+            firstName : String?
+            lastName : String?
+            avatar : List<Int>? - list of int parsed bytes
+            birthday : Long? - date in unix timestamp
+            email : String?
+            observation: String?
+            phone : String?
+            sex : String?
+            socialName : String?
+
+        Return Bool
+    */
     fun updateCustomer(call: MethodCall, result: Result) {
         Log.d("updatecust", "initou")
         if (sessionInit() != null) {
@@ -466,6 +541,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updatecust", "acabou de inita")
     }
 
+    /* 
+        Delete customer
+
+        Parameters
+            id : String - customer indentifier
+
+        Return Bool
+    */
     fun deleteCustomer(call: MethodCall, result: Result) {
         Log.d("deletecust", "initou")
         if (sessionInit() != null) {
@@ -499,7 +582,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
+    /* 
+        Add appointment
 
+        Parameters
+            date : Long - date in unix timestamp
+            duration : Long
+            customer : String? - customer indentifier
+            observation : String?
+            status : String?
+
+        Return String (new Appointment id)
+    */
     fun addAppointment(call: MethodCall, result: Result) {
         Log.d("addapp", "initou")
         if (sessionInit() != null) {
@@ -546,6 +640,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addapp", "cabou de initar")
     }
 
+    /* 
+        List appointment
+
+        Parameters
+            campo : String? - field to filter
+            logicalOperator : String? - filter method
+            valor : Any? - value to filter
+
+        Return List<Appointment>
+    */
     fun listAppointment(call: MethodCall, result: Result) {
         Log.d("listapp", "initou")
         if (sessionInit() != null) {
@@ -577,6 +681,19 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listapp", "cabou de initar")
     }
 
+    /* 
+        Update appointment
+
+        Parameters
+            id : String - appointment indentifier
+            date : Long? - date in unix timestamp
+            duration : Long?
+            customer : String? - customer indentifier
+            observation : String?
+            status : String?
+
+        Return Bool
+    */
     fun updateAppointment(call: MethodCall, result: Result) {
         Log.d("updateappoint", "initou")
         if (sessionInit() != null) {
@@ -629,6 +746,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updateappoint", "acabou de inita")
     }
 
+    /* 
+        Delete appointment
+
+        Parameters
+            id : String - appointment indentifier
+
+        Return Bool
+    */
     fun deleteAppointment(call: MethodCall, result: Result) {
         Log.d("deleteappoint", "initou")
         if (sessionInit() != null) {
@@ -662,7 +787,20 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
+    /* 
+        Add record
 
+        Parameters
+            dateTime : long - date in unix timestamp
+            description : String
+            source : String
+            customer : String? - customer indentifier
+            contentText : String?
+            contentBin : List<Int>? - list of int parsed bytes
+            tags : List<String>?
+
+        Return String (new Record id)
+    */
     fun addRecord(call: MethodCall, result: Result) {
         Log.d("addrecor", "intou")
         if (sessionInit() != null) {
@@ -723,6 +861,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addrecor", "acabou de inita")
     }
 
+    /* 
+        List record
+
+        Parameters
+            campo : String? - field to filter
+            logicalOperator : String? - filter method
+            valor : Any? - value to filter
+
+        Return List<Record>
+    */
     fun listRecord(call: MethodCall ,result: Result) {
         Log.d("listrecor", "initou")
         if (sessionInit() != null) {
@@ -771,6 +919,21 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listrecor", "cabou de initar")
     }
 
+    /* 
+        Update record
+
+        Parameters
+            id : String - record indentifier
+            dateTime : long? - date in unix timestamp
+            description : String?
+            source : String?
+            customer : String? - customer indentifier
+            contentText : String?
+            contentBin : List<Int>? - list of int parsed bytes
+            tags : List<String>?
+
+        Return Bool
+    */
     fun updateRecord(call: MethodCall, result: Result) {
         Log.d("updaterecor", "initou")
         if (sessionInit() != null) {
@@ -840,6 +1003,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updaterecor", "acabou de inita")
     }
 
+    /* 
+        Delete record
+
+        Parameters
+            id : String - record indentifier
+
+        Return Bool
+    */
     fun deleteRecord(call: MethodCall, result: Result) {
         Log.d("deleterecor", "initou")
         if (sessionInit() != null) {
@@ -872,7 +1043,20 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
+    /* 
+        Add configuration
 
+        Parameters
+            email : String
+            firstName : String
+            lastName : String
+            language : String
+            timezone : String
+            subscription : List<List<String>>? - Stripe subscription level
+            socialName : String?
+
+        Return String (new Configuration id)
+    */
     fun addConfiguration(call: MethodCall, result: Result) {
         Log.d("addconfig", "intou")
         if (sessionInit() != null) {
@@ -923,6 +1107,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addconfig", "acabou de inita")
     }
 
+    /* 
+        List configuration
+
+        Parameters
+            campo : String? - field to filter
+            logicalOperator : String? - filter method
+            valor : Any? - value to filter
+
+        Return List<Configuration>
+    */
     fun listConfiguration(call: MethodCall ,result: Result) {
         Log.d("listconfig", "initou")
         if (sessionInit() != null) {
@@ -961,6 +1155,21 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listconfig", "cabou de initar")
     }
 
+    /* 
+        Update configuration
+
+        Parameters
+            id : String - configuration indentifier
+            email : String?
+            firstName : String?
+            lastName : String?
+            language : String?
+            timezone : String?
+            subscription : List<List<String>>? - Stripe subscription level
+            socialName : String?
+
+        Return Bool
+    */
     fun updateConfiguration(call: MethodCall, result: Result) {
         Log.d("updateconfig", "initou")
         if (sessionInit() != null) {
@@ -1019,6 +1228,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updateconfig", "acabou de inita")
     }
 
+    /* 
+        Delete configuration
+
+        Parameters
+            id : String - configuration indentifier
+
+        Return Bool
+    */
     fun deleteConfiguration(call: MethodCall, result: Result) {
         Log.d("deleteconfig", "initou")
         if (sessionInit() != null) {
@@ -1052,7 +1269,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
+    /* 
+        Add text suggestion
 
+        Parameters
+            from : String?
+            to : String?
+            counter : Long?
+
+        Return String (new TextSuggestion id)
+    */
     fun addTextSuggestion(call: MethodCall, result: Result) {
         Log.d("addsuggestion", "intou")
         if (sessionInit() != null) {
@@ -1093,6 +1319,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addsuggestion", "acabou de inita")
     }
 
+    /* 
+        List text suggestion
+
+        Parameters
+            campo : String? - field to filter
+            logicalOperator : String? - filter method
+            valor : Any? - value to filter
+
+        Return List<TextSuggestion>
+    */
     fun listTextSuggestion(call: MethodCall ,result: Result) {
         Log.d("listsuggestion", "initou")
         if (sessionInit() != null) {
@@ -1123,6 +1359,17 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listsuggestion", "cabou de initar")
     }
 
+    /* 
+        Update text suggestion
+
+        Parameters
+            id : String - text suggestion indentifier
+            from : String?
+            to : String?
+            counter : Long?
+
+        Return Bool
+    */
     fun updateTextSuggestion(call: MethodCall, result: Result) {
         Log.d("updatesuggestion", "initou")
         if (sessionInit() != null) {
@@ -1170,6 +1417,15 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updatesuggestion", "acabou de inita")
     }
 
+    
+    /* 
+        Delete text suggestion
+
+        Parameters
+            id : String - text suggestion indentifier
+
+        Return Bool
+    */
     fun deleteTextSuggestion(call: MethodCall, result: Result) {
         Log.d("deletesuggestion", "initou")
         if (sessionInit() != null) {
@@ -1202,7 +1458,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     }
 
 
+    /* 
+        Filter results
 
+        Parameters
+            MethodCall - where the parameters are stored
+                campo : String - field to filter
+                logicalOperator : String - filter method
+                valor : Any? - value to filter
+            RealmQuery<Any> - results to be filtered 
+
+        Return RealmResults<Any>
+    */
     fun filterResults(call: MethodCall, query: RealmQuery<*>) : RealmResults<*> {
         val campo: String? = call.argument("campo")
         val operadorLogico: String? = call.argument("logicalOperator")
@@ -1269,12 +1536,43 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
+    /* 
+        Get the current RealmConfiguration
+
+        Return RealmConfiguration|null
+    */
+    fun sessionInit() : RealmConfiguration? {
+        if (!isLoggedIn())
+            return null
+            
+        if (Realm.getDefaultConfiguration() == null)
+            Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
+
+        return Realm.getDefaultConfiguration()
+    }
+
+    /* 
+        Download all server changes in a sub Thread
+
+        Parameters
+            session : SyncSession - current sync session 
+
+        Return Runnable
+    */
     class DownloadChanges(val session: SyncSession) : Runnable {
         override fun run() {
             session.downloadAllServerChanges()
         }
     }
 
+    /* 
+        Upload all local changes in a sub Thread
+
+        Parameters
+            SyncSession - current sync session 
+
+        Return Runnable
+    */
     class UploadChanges(val session: SyncSession) : Runnable {
         override fun run() {
             session.uploadAllLocalChanges()
