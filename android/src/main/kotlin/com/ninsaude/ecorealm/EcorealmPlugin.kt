@@ -424,7 +424,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
-            val campo: String? = call.argument("campo")
+            val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<customer>
             
             if (campo.isNullOrBlank()) {
@@ -655,7 +655,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
-            val campo: String? = call.argument("campo")
+            val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<appointment>
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<appointment>().findAll()
@@ -876,7 +876,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
-            val campo: String? = call.argument("campo")
+            val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<record>
             
             if (campo.isNullOrBlank()) {
@@ -1122,7 +1122,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
-            val campo: String? = call.argument("campo")
+            val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<configuration>
             
             if (campo.isNullOrBlank()) {
@@ -1334,7 +1334,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
-            val campo: String? = call.argument("campo")
+            val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<text_suggestion>
             
             if (campo.isNullOrBlank()) {
@@ -1463,70 +1463,126 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
         Parameters
             MethodCall - where the parameters are stored
-                campo : String - field to filter
+                field : String - field to filter
                 logicalOperator : String - filter method
-                valor : Any? - value to filter
+                value : Any? - value to filter
+                valueType : String? - type of the value
             RealmQuery<Any> - results to be filtered 
 
         Return RealmResults<Any>
     */
     fun filterResults(call: MethodCall, query: RealmQuery<*>) : RealmResults<*> {
-        val campo: String? = call.argument("campo")
+        val campo: String? = call.argument("field")
         val operadorLogico: String? = call.argument("logicalOperator")
-        
-        Log.d("Campo", "D: " + campo)
-        Log.d("OperadorLógico", "D: " + operadorLogico)
+        val tipoValor: String? = call.argument("valueType")
 
         if (campo.isNullOrBlank()) return query.findAll()
         
         try {
             when(operadorLogico) {
                 "equals" -> {
-                    val valor: String? = call.argument("valor")
-                    Log.d("Valor", "D: " + valor)
-                    if (!valor.isNullOrBlank()) {
-                        if (objectIdProperties.contains(campo)) return query.equalTo(campo, ObjectId(valor)).findAll()
-
-                        return query.equalTo(campo, valor).findAll()
+                    if (!tipoValor.isNullOrBlank()) {
+                        when(tipoValor) {
+                            "ObjectId" -> {
+                                val valor: String? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.equalTo(campo, ObjectId(valor)).findAll()
+                            }
+                            "Boolean" -> {
+                                val valor: Boolean? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.equalTo(campo, valor).findAll()
+                            }
+                            "Integer" -> {
+                                val valor: Int? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.equalTo(campo, valor).findAll()
+                            }
+                            "String" -> {
+                                val valor: String? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.equalTo(campo, valor).findAll()
+                            }
+                            "Date" -> {
+                                val valor: Long? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.equalTo(campo, Date(valor)).findAll()
+                            }
+                            else -> return query.findAll()
+                        }
                     }
                 }
                 "like" -> {
-                    val valor: String? = call.argument("valor")
-                    Log.d("Valor", "D: " + valor)
-                    if (!valor.isNullOrBlank()) {
-                        return query.like(campo, valor).findAll()
+                    if (!tipoValor.isNullOrBlank()) {
+                        when(tipoValor) {
+                            "String" -> {
+                                val valor: String? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.like(campo, valor).findAll()
+                            }
+                            else -> return query.findAll()
+                        }
                     }
                 }
                 "greater" -> {
-                    val valor: Int? = call.argument("valor")
-                    Log.d("Valor", "D: " + valor.toString())
-                    if (valor != null) {
-                        return query.greaterThan(campo, valor).findAll()
+                    if (!tipoValor.isNullOrBlank()) {
+                        when(tipoValor) {
+                            "ObjectId" -> {
+                                val valor: String? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.greaterThan(campo, ObjectId(valor)).findAll()
+                            }
+                            "Integer" -> {
+                                val valor: Int? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.greaterThan(campo, valor).findAll()
+                            }
+                            "Date" -> {
+                                val valor: Long? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.greaterThan(campo, Date(valor)).findAll()
+                            }
+                            else -> return query.findAll()
+                        }
                     }
                 }
                 "lesser" -> {
-                    val valor: Int? = call.argument("valor")
-                    Log.d("Valor", "D: " + valor.toString())
-                    if (valor != null) {
-                        return query.lessThan(campo, valor).findAll()
+                    if (!tipoValor.isNullOrBlank()) {
+                        when(tipoValor) {
+                            "ObjectId" -> {
+                                val valor: String? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.lessThan(campo, ObjectId(valor)).findAll()
+                            }
+                            "Integer" -> {
+                                val valor: Int? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.lessThan(campo, valor).findAll()
+                            }
+                            "Date" -> {
+                                val valor: Long? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.lessThan(campo, Date(valor)).findAll()
+                            }
+                            else -> return query.findAll()
+                        }
                     }
                 }
                 "beetwen" -> {
-                    val valor: List<Int>? = call.argument("valor")
-                    Log.d("Valor", "D: " + valor.toString())
-                    if (valor != null && !valor.isEmpty()) {
-                        return query.between(campo, valor[0], valor[1]).findAll()
+                    if (!tipoValor.isNullOrBlank()) {
+                        when(tipoValor) {
+                            "List" -> {
+                                val valor: List<Long>? = call.argument("value")
+                                if (valor == null) return query.findAll()
+                                return query.between(campo, Date(valor[0]), Date(valor[1])).findAll()
+                            }
+                            else -> return query.findAll()
+                        }
                     }
                 }
                 "notNull" -> {
                     return query.isNotNull(campo).findAll()
                 }
-                // "inList" -> {
-                //     val valor: List<String>? = call.argument("valor")
-                //     if (valor != null && !valor.isEmpty()) {
-                //         return query.`in`(campo, valor).findAll()
-                //     }
-                // }
                 else -> return query.findAll()
             }
             return query.findAll()

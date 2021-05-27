@@ -14,6 +14,15 @@ enum RealmLogicalOperator {
     notNull
 }
 
+enum RealmValueTypes {
+    objectId,
+    boolean,
+    integer,
+    string,
+    list,
+    date
+}
+
 enum RealmConnectionType {
     wifi,
     mobile,
@@ -121,16 +130,19 @@ class Ecorealm {
     }
     
     static Future<List> getCustomers({
-        String campo,
+        String field,
         RealmLogicalOperator logicalOperator,
-        dynamic valor
+        dynamic value,
+        RealmValueTypes valueType
     }) async {
+        var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
             'listCustomer',
             {
-                "campo": campo,
-                "logicalOperator": _operador(logicalOperator),
-                "valor": valor, 
+                "field": field,
+                "logicalOperator": _logicalOperator(logicalOperator),
+                "value": valores[1],
+                "valueType": valores[2] 
             }
             )
             .onError((error, stackTrace) {
@@ -206,16 +218,19 @@ class Ecorealm {
 
 
     static Future<List> getAppointments({
-        String campo,
+        String field,
         RealmLogicalOperator logicalOperator,
-        dynamic valor
+        dynamic value,
+        RealmValueTypes valueType
     }) async {
+        var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
             'listAppointment',
             {
-                "campo": campo,
-                "logicalOperator": _operador(logicalOperator),
-                "valor": valor, 
+                "field": field,
+                "logicalOperator": _logicalOperator(logicalOperator),
+                "value": valores[1],
+                "valueType": valores[2]
             }
             )
             .onError((error, stackTrace) {
@@ -275,16 +290,19 @@ class Ecorealm {
 
 
     static Future<List> getRecords({
-        String campo,
+        String field,
         RealmLogicalOperator logicalOperator,
-        dynamic valor
+        dynamic value,
+        RealmValueTypes valueType
     }) async {
+        var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
             'listRecord',
             {
-                "campo": campo,
-                "logicalOperator": _operador(logicalOperator),
-                "valor": valor, 
+                "field": field,
+                "logicalOperator": _logicalOperator(logicalOperator),
+                "value": valores[1],
+                "valueType": valores[2] 
             }
             )
             .onError((error, stackTrace) {
@@ -352,17 +370,19 @@ class Ecorealm {
 
 
     static Future<List> getConfigurations({
-        String campo,
+        String field,
         RealmLogicalOperator logicalOperator,
-        dynamic valor
+        dynamic value,
+        RealmValueTypes valueType
     }) async {
-        
+        var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
             'listConfiguration',
             {
-                "campo": campo,
-                "logicalOperator": _operador(logicalOperator),
-                "valor": valor, 
+                "field": field,
+                "logicalOperator": _logicalOperator(logicalOperator),
+                "value": valores[1],
+                "valueType": valores[2]
             }
         )
         .onError((error, stackTrace) {
@@ -429,16 +449,19 @@ class Ecorealm {
     }
 
     static Future<List> getTextSuggestions({
-        String campo,
+        String field,
         RealmLogicalOperator logicalOperator,
-        dynamic valor
+        dynamic value,
+        RealmValueTypes valueType
     }) async {
+        var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
             'listTextSuggestion',
             {
-                "campo": campo,
-                "logicalOperator": _operador(logicalOperator),
-                "valor": valor, 
+                "field": field,
+                "logicalOperator": _logicalOperator(logicalOperator),
+                "value": valores[1],
+                "valueType": valores[2]
             }
             )
             .onError((error, stackTrace) {
@@ -488,7 +511,7 @@ class Ecorealm {
         );
     }
 
-    static String _operador(RealmLogicalOperator operador) {
+    static String _logicalOperator(RealmLogicalOperator operador) {
         String lOperador = '';
         switch(operador) {
             case RealmLogicalOperator.equals:
@@ -514,5 +537,49 @@ class Ecorealm {
             break; 
         }
         return lOperador;
+    }
+
+    static List _valueType(RealmValueTypes valueType, dynamic value){
+        switch(valueType) {
+            case RealmValueTypes.objectId:
+                return [
+                    'ObjectId',
+                    value
+                ];
+            break;
+            case RealmValueTypes.boolean:
+                return [
+                    'Boolean',
+                    value
+                ];
+            break;
+            case RealmValueTypes.integer:
+                return [
+                    'Integer',
+                    value
+                ];
+            break;
+            case RealmValueTypes.string:
+                return [
+                    'String',
+                    value
+                ];
+            break;
+            case RealmValueTypes.date:
+                return [
+                    'Date',
+                    value.millisecondsSinceEpoch
+                ];
+            break;
+            case RealmValueTypes.list:
+                return [
+                    'List',
+                    value
+                ];
+            break;
+            default:
+                return [];
+            break;
+        }
     }
 }

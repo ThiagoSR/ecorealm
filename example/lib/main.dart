@@ -185,9 +185,10 @@ class _MyAppState extends State<MyApp> {
                                     onPressed: () async {
                                         if (customer_id != "") {
                                             print(await Ecorealm.getCustomers(
-                                                campo: '_id',
+                                                field: '_id',
                                                 logicalOperator: RealmLogicalOperator.equals,
-                                                valor: customer_id
+                                                value: customer_id,
+                                                valueType: RealmValueTypes.objectId
                                             ));
                                         }
                                     }, 
@@ -252,9 +253,10 @@ class _MyAppState extends State<MyApp> {
                                     onPressed: () async {
                                         if (appointment_id != "") {
                                             print(await Ecorealm.getAppointments(
-                                                campo: '_id',
+                                                field: '_id',
                                                 logicalOperator: RealmLogicalOperator.equals,
-                                                valor: appointment_id
+                                                value: appointment_id,
+                                                valueType: RealmValueTypes.objectId
                                             ));
                                         }
                                     }, 
@@ -321,9 +323,10 @@ class _MyAppState extends State<MyApp> {
                                     onPressed: () async {
                                         if (record_id != "") {
                                             print(await Ecorealm.getRecords(
-                                                campo: '_id',
+                                                field: '_id',
                                                 logicalOperator: RealmLogicalOperator.equals,
-                                                valor: record_id
+                                                value: record_id,
+                                                valueType: RealmValueTypes.objectId
                                             ));
                                         }
                                     }, 
@@ -394,9 +397,10 @@ class _MyAppState extends State<MyApp> {
                                     onPressed: () async {
                                         if (configuration_id != "") {
                                             print(await Ecorealm.getConfigurations(
-                                                campo: '_id',
+                                                field: '_id',
                                                 logicalOperator: RealmLogicalOperator.equals,
-                                                valor: configuration_id
+                                                value: configuration_id,
+                                                valueType: RealmValueTypes.objectId
                                             ));
                                         }
                                     }, 
@@ -459,9 +463,10 @@ class _MyAppState extends State<MyApp> {
                                     onPressed: () async {
                                         if (textsuggestion_id != "") {
                                             print(await Ecorealm.getTextSuggestions(
-                                                campo: '_id',
+                                                field: '_id',
                                                 logicalOperator: RealmLogicalOperator.equals,
-                                                valor: textsuggestion_id
+                                                value: textsuggestion_id,
+                                                valueType: RealmValueTypes.objectId
                                             ));
                                         }
                                     }, 
@@ -500,9 +505,10 @@ class _MyAppState extends State<MyApp> {
                                 ElevatedButton(
                                     onPressed: () async {
                                         print(await Ecorealm.getCustomers(
-                                            campo: 'first_name',
+                                            field: 'first_name',
                                             logicalOperator: RealmLogicalOperator.like,
-                                            valor: 'Thiago4' + '*'
+                                            value: 'Thiago4' + '*',
+                                            valueType: RealmValueTypes.string
                                         ));
                                     }, 
                                     child: Text("Filtrar nome customer"),
