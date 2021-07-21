@@ -12,6 +12,8 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import android.os.Build
+import androidx.annotation.RequiresApi
 
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -39,6 +41,7 @@ import io.realm.mongodb.auth.GoogleAuthType
 import io.realm.RealmList
 import io.realm.RealmConfiguration
 import io.realm.RealmQuery
+import io.realm.mongodb.sync.ProgressMode
 
 import java.util.concurrent.FutureTask
 import java.util.concurrent.ExecutorService
@@ -79,7 +82,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             "register" -> register(call, result)
             "isLoggedIn" -> {
                 Log.d("isLoggedIn", "teste")
-                if(isLoggedIn()) 
+                if(isLoggedIn())
                     result.success(true)
                 else
                     result.success(false)
@@ -116,6 +119,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
         Return Int (0 = not connected, 1 - Wi-fi, 2 - Mobile)
     */
+    @RequiresApi(Build.VERSION_CODES.M)
     fun getConnectionType(result: Result) {
         val connectivityManager : ConnectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         var connection : Network? = connectivityManager.activeNetwork
@@ -139,10 +143,10 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     */
     fun init(result: Result) {
         Realm.init(context)
+
         app = App(AppConfiguration.Builder(appId).build())
 
         if (isLoggedIn()) {
-            Log.d("gdc", Realm.getDefaultConfiguration()?.path + ":(")
             result.success(true)
         } else {
             result.success(false)
@@ -156,7 +160,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     */
     fun stopSync(result: Result) {
         if (sessionInit() != null) {
-            try { 
+            try {
                 app.sync.getSession(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build()).stop()
                 result.success(true)
             } catch (e : Exception) {
@@ -179,6 +183,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 syncSession.start();
                 DownloadChanges(syncSession);
                 UploadChanges(syncSession);
+
+                syncSession.addDownloadProgressListener(ProgressMode.CURRENT_CHANGES) {
+                    Log.d("download progress", it.fractionTransferred.toString())
+                }
+
+                syncSession.addUploadProgressListener(ProgressMode.CURRENT_CHANGES) {
+                    Log.d("upload progress", it.fractionTransferred.toString())
+                }
                 result.success(true)
             } catch (e : Exception) {
                 result.success(false)
@@ -250,8 +262,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 )
             ) {
                 if (it.isSuccess) {
-                    Log.d("Usuario atual", app.currentUser()?.id + " :|")
-                    Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
+                    if (Realm.getDefaultConfiguration() == null || Realm.getDefaultConfiguration()!!.path.indexOf("default.realm") > -1) {
+                        Log.d("Nova", Realm.getDefaultConfiguration()!!.path);
+                        Log.d("Nova", app.currentUser()?.id.toString())
+                        Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).allowWritesOnUiThread(true).build())
+                    }
                     result.success(sessionInit() != null)
                 } else {
                     Log.d("Erro Login", it.error.toString());
@@ -272,9 +287,24 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Return Bool
     */
     fun logOut(result: Result) {
+        Log.d("Antiga", Realm.getDefaultConfiguration()!!.path)
+        Log.d("Antiga", app.currentUser()!!.id)
         app.currentUser()?.logOutAsync() {
             if (it.isSuccess) {
-                Realm.removeDefaultConfiguration();
+                val config : RealmConfiguration? = Realm.getDefaultConfiguration();
+                val realm : Realm = Realm.getInstance(config);
+
+                if (!realm.isClosed) {
+                    Log.d("Realm", "fechando")
+                    realm.close()
+                }
+
+                if (realm.isClosed) {
+                    Log.d("Realm", "fechado")
+                    Realm.deleteRealm(realm.configuration)
+                    Realm.removeDefaultConfiguration()
+                }
+
                 result.success(true)
             } else {
                 Log.d("erroLogout", it.error.toString())
@@ -362,7 +392,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             val realmThread = Realm.getInstance(sessionInit()!!)
             val partitionKey = app.currentUser()?.id.toString()
             var cust: customer = customer()
-            
+
             val first_name: String? = call.argument("firstName")
             val last_name: String? = call.argument("lastName")
             val avatar: List<Int>? = call.argument("avatar")
@@ -392,7 +422,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 cust.sex = sex
                 cust.social_name = social_name
 
-                transactionRealm.insert(cust) 
+                transactionRealm.insert(cust)
             }, Realm.Transaction.OnSuccess {
                 Log.d("onSuccess","teste")
                 realmThread.close()
@@ -409,7 +439,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addcust", "acabou de inita")
     }
 
-    /* 
+    /*
         List customer
 
         Parameters
@@ -422,11 +452,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun listCustomer(call: MethodCall, result: Result) {
         Log.d("listcust", "initou")
         if (sessionInit() != null) {
-            val realm = Realm.getInstance(sessionInit()!!)
+            val realm = Realm.getDefaultInstance()//sessionInit()!!)
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<customer>
-            
+
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<customer>().findAll()
             } else {
@@ -436,7 +466,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             listResult.forEach {
                 var avatarByte = it.avatar
                 val avatarInt = arrayListOf<Any>()
-                
+
                 if (avatarByte != null) {
                     val avatarByteList = avatarByte.toList()
                     avatarByteList.forEach {
@@ -464,7 +494,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listcust", "cabou de initar")
     }
 
-    /* 
+    /*
         Update customer
 
         Parameters
@@ -489,7 +519,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success(false)
             } else {
                 val realmThread = Realm.getInstance(sessionInit()!!)
-                
+
                 val first_name: String? = call.argument("firstName")
                 val last_name: String? = call.argument("lastName")
                 val avatar: List<Int>? = call.argument("avatar")
@@ -505,7 +535,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     var cust: customer? = transactionRealm.where<customer>().equalTo("_id", ObjectId(id)).findFirst()
                     if (cust != null) {
                         if (!first_name.isNullOrBlank()) cust.first_name = first_name
-                        if (!last_name.isNullOrBlank()) cust.last_name = last_name 
+                        if (!last_name.isNullOrBlank()) cust.last_name = last_name
                         if (avatar != null) {
                             avatar.forEach {
                                 avatarByte.add(it.toByte())
@@ -523,7 +553,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     } else {
                         transactionRealm.close()
                         result.success(false)
-                    } 
+                    }
                 }, Realm.Transaction.OnSuccess {
                     Log.d("onSuccess","teste")
                     realmThread.close()
@@ -541,7 +571,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updatecust", "acabou de inita")
     }
 
-    /* 
+    /*
         Delete customer
 
         Parameters
@@ -582,7 +612,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
-    /* 
+    /*
         Add appointment
 
         Parameters
@@ -622,7 +652,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 appoint.observation = observation
                 appoint.status = status
 
-                transactionRealm.insert(appoint) 
+                transactionRealm.insert(appoint)
             }, Realm.Transaction.OnSuccess {
                 Log.d("onSuccess","teste")
                 realmThread.close()
@@ -636,11 +666,11 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         } else {
             result.error("403", "Nenhum usuário conectado", "Conecte um usuario")
         }
-        
+
         Log.d("addapp", "cabou de initar")
     }
 
-    /* 
+    /*
         List appointment
 
         Parameters
@@ -681,7 +711,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listapp", "cabou de initar")
     }
 
-    /* 
+    /*
         Update appointment
 
         Parameters
@@ -702,7 +732,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success(false)
             } else {
                 val realmThread = Realm.getInstance(sessionInit()!!)
-                
+
                 val customer: String? = call.argument("customer")
                 val date_time: Long? = call.argument("date")
                 val observation: String? = call.argument("observation")
@@ -717,7 +747,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
                 realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
                     var appoint: appointment? = transactionRealm.where<appointment>().equalTo("_id", ObjectId(id)).findFirst()
-                    if (appoint != null) { 
+                    if (appoint != null) {
                         if (!customer.isNullOrBlank()) appoint.customer = transactionRealm.where<customer>().equalTo("_id", ObjectId(customer)).findFirst()
                         if (date_time != null) appoint.date_time = Date(date_time)
                         if (!observation.isNullOrBlank()) appoint.observation = observation
@@ -728,7 +758,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     } else {
                         transactionRealm.close()
                         result.success(false)
-                    } 
+                    }
                 }, Realm.Transaction.OnSuccess {
                     Log.d("onSuccess","teste")
                     realmThread.close()
@@ -746,7 +776,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updateappoint", "acabou de inita")
     }
 
-    /* 
+    /*
         Delete appointment
 
         Parameters
@@ -787,7 +817,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
-    /* 
+    /*
         Add record
 
         Parameters
@@ -822,7 +852,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 tags?.forEach {
                     realm_tags.add(it)
                 }
-    
+
                 recor.`_id` = ObjectId()
                 recor.`_partition` = partitionKey
                 recor.date_time = Date(date!!)
@@ -833,18 +863,18 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     content_bin.forEach {
                         content_bin_byte.add(it.toByte())
                     }
-                    
+
                     var content: record_content = record_content()
                     content.binary = content_bin_byte.toByteArray()
-                    if (!content_text.isNullOrBlank()) content.text = content_text 
-                    
+                    if (!content_text.isNullOrBlank()) content.text = content_text
+
                     recor.content = content
                 }
                 if (!customer.isNullOrBlank()) {
                     recor.customer = transactionRealm.where<customer>().equalTo("_id", ObjectId(customer)).findFirst()
                 }
 
-                transactionRealm.insert(recor) 
+                transactionRealm.insert(recor)
             }, Realm.Transaction.OnSuccess {
                 Log.d("onSuccess","teste")
                 realmThread.close()
@@ -861,7 +891,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addrecor", "acabou de inita")
     }
 
-    /* 
+    /*
         List record
 
         Parameters
@@ -878,7 +908,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<record>
-            
+
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<record>().findAll()
             } else {
@@ -919,7 +949,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listrecor", "cabou de initar")
     }
 
-    /* 
+    /*
         Update record
 
         Parameters
@@ -942,7 +972,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 result.success(false)
             } else {
                 val realmThread = Realm.getInstance(sessionInit()!!)
-                
+
                 val date: Long? = call.argument("dateTime")
                 val description: String? = call.argument("description")
                 val source: String? = call.argument("source")
@@ -970,22 +1000,22 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                             content_bin.forEach {
                                 content_bin_byte.add(it.toByte())
                             }
-                            
+
                             var content: record_content = record_content()
                             content.binary = content_bin_byte.toByteArray()
-                            if (!content_text.isNullOrBlank()) content.text = content_text 
-                            
+                            if (!content_text.isNullOrBlank()) content.text = content_text
+
                             recor.content = content
                         }
                         if (!customer.isNullOrBlank()) {
                             recor.customer = transactionRealm.where<customer>().equalTo("_id", ObjectId(customer)).findFirst()
-                        } 
+                        }
 
                         transactionRealm.insertOrUpdate(recor)
                     } else {
                         transactionRealm.close()
                         result.success(false)
-                    } 
+                    }
                 }, Realm.Transaction.OnSuccess {
                     Log.d("onSuccess","teste")
                     realmThread.close()
@@ -1003,7 +1033,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updaterecor", "acabou de inita")
     }
 
-    /* 
+    /*
         Delete record
 
         Parameters
@@ -1043,7 +1073,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
-    /* 
+    /*
         Add configuration
 
         Parameters
@@ -1079,7 +1109,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         configuration_subscription(it[0],it[1])
                     )
                 }
-    
+
                 confi.`_id` = ObjectId()
                 confi.`_partition` = partitionKey
                 confi.email = email!!
@@ -1090,7 +1120,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 confi.subscription = realm_list
                 confi.social_name = social_name
 
-                transactionRealm.insert(confi) 
+                transactionRealm.insert(confi)
             }, Realm.Transaction.OnSuccess {
                 Log.d("onSuccess","teste")
                 realmThread.close()
@@ -1107,7 +1137,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addconfig", "acabou de inita")
     }
 
-    /* 
+    /*
         List configuration
 
         Parameters
@@ -1124,7 +1154,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<configuration>
-            
+
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<configuration>().findAll()
             } else {
@@ -1155,7 +1185,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listconfig", "cabou de initar")
     }
 
-    /* 
+    /*
         Update configuration
 
         Parameters
@@ -1204,7 +1234,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                             }
                             confi.subscription = realm_list
                         }
-                        if (!social_name.isNullOrBlank()) confi.social_name = social_name 
+                        if (!social_name.isNullOrBlank()) confi.social_name = social_name
 
                         transactionRealm.insertOrUpdate(confi)
                     } else {
@@ -1228,7 +1258,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updateconfig", "acabou de inita")
     }
 
-    /* 
+    /*
         Delete configuration
 
         Parameters
@@ -1269,7 +1299,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
 
 
 
-    /* 
+    /*
         Add text suggestion
 
         Parameters
@@ -1295,14 +1325,14 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 counter = counterInt!!.toLong()
             }
 
-            realmThread.executeTransactionAsync( Realm.Transaction { transactionRealm ->               
+            realmThread.executeTransactionAsync( Realm.Transaction { transactionRealm ->
                 textsugg.`_id` = ObjectId()
                 textsugg.`_partition` = partitionKey
                 textsugg.from = from!!
                 textsugg.to = to!!
                 textsugg.counter = counter!!.toLong()
 
-                transactionRealm.insert(textsugg) 
+                transactionRealm.insert(textsugg)
             }, Realm.Transaction.OnSuccess {
                 Log.d("onSuccess","teste")
                 realmThread.close()
@@ -1319,7 +1349,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("addsuggestion", "acabou de inita")
     }
 
-    /* 
+    /*
         List text suggestion
 
         Parameters
@@ -1336,7 +1366,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             var list = arrayListOf<Any>()
             val campo: String? = call.argument("field")
             lateinit var listResult: RealmResults<text_suggestion>
-            
+
             if (campo.isNullOrBlank()) {
                 listResult = realm.where<text_suggestion>().findAll()
             } else {
@@ -1359,7 +1389,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("listsuggestion", "cabou de initar")
     }
 
-    /* 
+    /*
         Update text suggestion
 
         Parameters
@@ -1398,8 +1428,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         transactionRealm.insertOrUpdate(textsugg)
                     } else {
                         transactionRealm.close()
-                        result.success(false) 
-                    } 
+                        result.success(false)
+                    }
                 }, Realm.Transaction.OnSuccess {
                     Log.d("onSuccess","teste")
                     realmThread.close()
@@ -1417,8 +1447,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         Log.d("updatesuggestion", "acabou de inita")
     }
 
-    
-    /* 
+
+    /*
         Delete text suggestion
 
         Parameters
@@ -1458,7 +1488,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     }
 
 
-    /* 
+    /*
         Filter results
 
         Parameters
@@ -1467,7 +1497,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 logicalOperator : String - filter method
                 value : Any? - value to filter
                 valueType : String? - type of the value
-            RealmQuery<Any> - results to be filtered 
+            RealmQuery<Any> - results to be filtered
 
         Return RealmResults<Any>
     */
@@ -1477,7 +1507,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         val tipoValor: String? = call.argument("valueType")
 
         if (campo.isNullOrBlank()) return query.findAll()
-        
+
         try {
             when(operadorLogico) {
                 "equals" -> {
@@ -1592,7 +1622,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         }
     }
 
-    /* 
+    /*
         Get the current RealmConfiguration
 
         Return RealmConfiguration|null
@@ -1600,7 +1630,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun sessionInit() : RealmConfiguration? {
         if (!isLoggedIn())
             return null
-            
+
         if (Realm.getDefaultConfiguration() == null)
             Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).build())
 

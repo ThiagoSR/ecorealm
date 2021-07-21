@@ -1,11 +1,22 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:ecorealm_example/pages/customer.dart';
+import 'package:ecorealm_example/pages/planos.dart';
+import 'package:ecorealm_example/pages/record.dart';
+import 'package:ecorealm_example/pages/schedule.dart';
+import 'package:ecorealm_example/pages/textSuggestion.dart';
+import 'package:ecorealm_example/pages/user.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:ecorealm/ecorealm.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart';
+import 'package:path_provider/path_provider.dart';
 // import 'package:google_sign_in/google_sign_in.dart';
 // import 'package:google';
 // import 'package:http/http.dart' as http;
@@ -19,15 +30,26 @@ class MyApp extends StatefulWidget {
   _MyAppState createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> {
-    bool _booLogado = false;
-    String customer_id = "";
-    String appointment_id = "";
-    String record_id = "";
-    String configuration_id = "";
-    String textsuggestion_id = "";
-    var rng = new Random();
+enum States {
+    customer,
+    planos,
+    record,
+    schedule,
+    textSuggestion,
+    user
+}
 
+class _MyAppState extends State<MyApp> {
+    States state = States.customer;
+    bool _booLogado = false;
+    var rng = new Random();
+    GoogleSignIn _googleSignIn = GoogleSignIn(
+        // Optional clientId
+        // clientId: '479882132969-9i9aqik3jfjd7qhci1nqf0bm2g71rm1u.apps.googleusercontent.com',
+        scopes: <String>[
+            'email'
+        ],
+    );
     @override
     void initState() {
         super.initState();
@@ -42,26 +64,7 @@ class _MyAppState extends State<MyApp> {
         });
     }
 
-    // Future<void> teste() async{
-    //     http.Response response = await http
-    //         .get(Uri.parse('https://cdn.discordapp.com/emojis/806895966341824534.png'));
-    //     print(await Ecorealm.addCustomer(
-    //         firstName: "João2",
-    //         lastName: "Silva2",
-    //         avatar: response.bodyBytes.toList()
-    //     ));
-    // }
-
-    Future<void> teste2() async{
-        print(await Ecorealm.addRecord(
-            dateTime: DateTime.now().toUtc(),
-            description: "teste",
-            source: "teste",
-            tags: ['1', '2', '3'],
-        ));
-    }
-
-    //     profile	View your basic profile info
+    // profile	View your basic profile info
     // email	View your email address
     // openid	Authenticate using OpenID Connect
 
@@ -69,528 +72,195 @@ class _MyAppState extends State<MyApp> {
     Widget build(BuildContext context) {
         return MaterialApp(
             home: Scaffold(
-                floatingActionButton: Column(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                        Column(
-                            children: [
-                                FloatingActionButton(
-                                    onPressed: () async {
-                                        if (_booLogado) {
-                                            bool deslogado = await Ecorealm.logOut();
-                                            setState(() {
-                                                _booLogado = !deslogado;
-                                            });
-                                        } else { 
-                                            print('começando login');
-                                            bool logado = await Ecorealm.logIn(
-                                                username: 'thiagospindolarossi15409@gmail.com',
-                                                password: '123456'
-                                            );
-                                            print('finalizando login');
-                                            print(logado);
-                                            setState(() {
-                                                _booLogado = logado;
-                                            });
-                                        }
-                                    },
-                                    child: _booLogado ? Text('Deslogar') : Text('Logar'),
-                                ),
-                                SizedBox(height: 10,),
-                                FloatingActionButton(
-                                    onPressed: () async {
-                                        print(_booLogado);
-                                        if (_booLogado) {
-                                            bool deslogado = await Ecorealm.logOut();
-                                            setState(() {
-                                                _booLogado = !deslogado;
-                                            });
-                                        } else { 
-                                            bool logado = await Ecorealm.register(
-                                                username: 'thiagospindolarossi15'+ new Random().nextInt(1000).toString() +'@gmail.com',
-                                                password: '123456'
-                                            );
-                                            setState(() {
-                                                _booLogado = logado;
-                                            });
-                                        }
-                                    },
-                                    child: _booLogado ? Text('Deslogar') : Text('Logar'),
-                                ),
-                                SizedBox(height: 10,),
-                                FloatingActionButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.stopSync());
-                                    },
-                                    child: Text('Stop'),
-                                ),
-                                SizedBox(height: 10,),
-                                FloatingActionButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.startSync());
-                                    },
-                                    child: Text('Start'),
-                                ),
-                                SizedBox(height: 10,),
-                                FloatingActionButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.connectionType);
-                                    },
-                                    child: Text('Type'),
-                                )
-                            ]
-                        )
-                    ]
-                ),
+                // floatingActionButton: Column(
+                //     mainAxisAlignment: MainAxisAlignment.end,
+                //     crossAxisAlignment: CrossAxisAlignment.end,
+                //     children: [
+                //         Column(
+                //             children: [
+                                // SizedBox(height: 10,),
+                                // FloatingActionButton(
+                                //     onPressed: () async {
+                                //         print(await Ecorealm.connectionType);
+                                //     },
+                                //     child: Text('Type'),
+                                // ),
+                                // SizedBox(height: 10,),
+                                // FloatingActionButton(
+                                //     onPressed: () async {
+                                //         await Ecorealm.exportData(RealmExportType.xml, await getApplicationDocumentsDirectory());
+                                //         print('exportou');
+                                //     },
+                                //     child: Text('Exportar'),
+                                // )
+                //             ]
+                //         )
+                //     ]
+                // ),
                 appBar: AppBar(
                     title: const Text('Plugin example app'),
                 ),
-                body: Center(
-                    child: SingleChildScrollView(
-                        child: Column(
-                            children: [
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        List a = await Ecorealm.getCustomers();
-                                        a.forEach((element) {
-                                            print(element['firstName']);
-                                        });
-                                    }, 
-                                    child: Text("Listar customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blue)
+                body: Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Column(
+                        children: [
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                    Text(_booLogado ? 'Logado' : 'Deslogado'),
+                                    SizedBox(width: 10),
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                            if (_booLogado) {
+                                                print('Deslogando');
+                                                bool deslogado = await Ecorealm.logOut();
+                                                print(deslogado);
+                                                setState(() {
+                                                    _booLogado = !deslogado;
+                                                });
+                                            } else { 
+                                                print('Logando');
+                                                bool logado = await Ecorealm.logIn(
+                                                    username: 'thiagospindolarossi15409@gmail.com',
+                                                    password: '123456'
+                                                );
+                                                print(logado);
+                                                setState(() {
+                                                    _booLogado = logado;
+                                                });
+                                            }
+                                        }, 
+                                        child: _booLogado ? Text('Deslogar') : Text('Logar'),
                                     ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        customer_id = await Ecorealm.addCustomer(
-                                            firstName: "Thiago" + rng.nextInt(100).toString(),
-                                            lastName: "Rossi" + rng.nextInt(100).toString(),
-                                            birthday: DateTime.now().toUtc(),
-                                            email: "thiagorossi@teste.com" + rng.nextInt(100).toString(),
-                                            observation: "teste",
-                                            phone: "999999999",
-                                            sex: "male",
-                                            socialName: "teste" + rng.nextInt(100).toString()
-                                        );
-                                        print(customer_id);
-                                    }, 
-                                    child: Text("Adicionar customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blue)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (customer_id != "") {
-                                            print(await Ecorealm.getCustomers(
-                                                field: '_id',
-                                                logicalOperator: RealmLogicalOperator.equals,
-                                                value: customer_id,
-                                                valueType: RealmValueTypes.objectId
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Pegar ultimo customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blue)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (customer_id != "") {
-                                            print(await Ecorealm.updateCustomer(
-                                                id: customer_id,
-                                                firstName: "alterado",
-                                                observation: "alterado"
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Editar ultimo customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blue)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (customer_id != "") {
-                                            print(await Ecorealm.deleteCustomer(customer_id));
-                                        }
-                                    }, 
-                                    child: Text("Deletar ultimo customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blue)
-                                    ),
-                                ),
-                                SizedBox(height: 20),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.getAppointments());
-                                    }, 
-                                    child: Text("Listar appointment"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        appointment_id = await Ecorealm.addAppointment(
-                                            customer: customer_id,
-                                            observation: "Rossi" + rng.nextInt(100).toString(),
-                                            date: DateTime.now().toUtc(),
-                                            duration: 5000000000000000000,
-                                            status: "Marcado"
-                                        );
-                                        print(appointment_id);
-                                    }, 
-                                    child: Text("Adicionar appointment"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (appointment_id != "") {
-                                            print(await Ecorealm.getAppointments(
-                                                field: '_id',
-                                                logicalOperator: RealmLogicalOperator.equals,
-                                                value: appointment_id,
-                                                valueType: RealmValueTypes.objectId
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Pegar ultimo appointment"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (appointment_id != "") {
-                                            print(await Ecorealm.updateAppointment(
-                                                id: appointment_id,
-                                                status: "alterado",
-                                                observation: "alterado"
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Editar ultimo appointment"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (appointment_id != "") {
-                                            print(await Ecorealm.deleteAppointment(appointment_id));
-                                        }
-                                    }, 
-                                    child: Text("Deletar ultimo appointment"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red)
-                                    ),
-                                ),
-                                SizedBox(height: 20),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.getRecords());
-                                    }, 
-                                    child: Text("Listar record"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        record_id = await Ecorealm.addRecord(
-                                            customer: customer_id,
-                                            description: "desc" + rng.nextInt(100).toString(),
-                                            dateTime: DateTime.now().toUtc(),
-                                            source: "teste" + rng.nextInt(200).toString(),
-                                            tags: ["teste1", "teste2", rng.nextInt(300).toString()],
-                                            contentBin: [1,2,3,4,5,6,7,8],
-                                            contentText: "teste" + rng.nextInt(100).toString()
-                                        );
-                                        print(record_id);
-                                    }, 
-                                    child: Text("Adicionar record"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (record_id != "") {
-                                            print(await Ecorealm.getRecords(
-                                                field: '_id',
-                                                logicalOperator: RealmLogicalOperator.equals,
-                                                value: record_id,
-                                                valueType: RealmValueTypes.objectId
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Pegar ultimo record"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (record_id != "") {
-                                            print(await Ecorealm.updateRecord(
-                                                id: record_id,
-                                                description: "alterado",
-                                                dateTime: DateTime.now().toUtc(),
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Editar ultimo record"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (record_id != "") {
-                                            print(await Ecorealm.deleteRecord(record_id));
-                                        }
-                                    }, 
-                                    child: Text("Deletar ultimo record"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green)
-                                    ),
-                                ),
-                                SizedBox(height: 20),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.getConfigurations());
-                                    }, 
-                                    child: Text("Listar configuration"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.purple)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        configuration_id = await Ecorealm.addConfiguration(
-                                            firstName: "Thiago" + rng.nextInt(100).toString(),
-                                            lastName: "Rossi" + rng.nextInt(100).toString(),
-                                            email: "thiagorossi@teste.com" + rng.nextInt(100).toString(),
-                                            language: "teste",
-                                            timezone: "999999999",
-                                            socialName: "teste" + rng.nextInt(100).toString(),
-                                            subscription: [
-                                                ['teste', '1'],
-                                                ['teste2', '2'],
-                                                ['teste' + rng.nextInt(50).toString(), rng.nextInt(50).toString()]
-                                            ]
-                                        );
-                                        print(configuration_id);
-                                    }, 
-                                    child: Text("Adicionar configuration"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.purple)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (configuration_id != "") {
-                                            print(await Ecorealm.getConfigurations(
-                                                field: '_id',
-                                                logicalOperator: RealmLogicalOperator.equals,
-                                                value: configuration_id,
-                                                valueType: RealmValueTypes.objectId
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Pegar ultimo configuration"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.purple)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (configuration_id != "") {
-                                            print(await Ecorealm.updateConfiguration(
-                                                id: configuration_id,
-                                                firstName: "alterado",
-                                                socialName: "alterado"
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Editar ultimo configuration"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.purple)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (configuration_id != "") {
-                                            print(await Ecorealm.deleteConfiguration(configuration_id));
-                                        }
-                                    }, 
-                                    child: Text("Deletar ultimo configuration"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.purple)
-                                    ),
-                                ),
-                                SizedBox(height: 20),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.getTextSuggestions());
-                                    }, 
-                                    child: Text("Listar textsuggestion"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.orange)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        textsuggestion_id = await Ecorealm.addTextSuggestion(
-                                            from: "teste" + rng.nextInt(50).toString(),
-                                            to: "teste to" "teste" + rng.nextInt(50).toString(),
-                                            counter: rng.nextInt(50)
-                                        );
-                                        print(textsuggestion_id);
-                                    }, 
-                                    child: Text("Adicionar TextSuggestion"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.orange)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (textsuggestion_id != "") {
-                                            print(await Ecorealm.getTextSuggestions(
-                                                field: '_id',
-                                                logicalOperator: RealmLogicalOperator.equals,
-                                                value: textsuggestion_id,
-                                                valueType: RealmValueTypes.objectId
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Pegar ultimo TextSuggestion"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.orange)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (textsuggestion_id != "") {
-                                            print(await Ecorealm.updateTextSuggestion(
-                                                id: textsuggestion_id,
-                                                counter: rng.nextInt(100)
-                                            ));
-                                        }
-                                    }, 
-                                    child: Text("Editar ultimo TextSuggestion"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.orange)
-                                    ),
-                                ),
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        if (textsuggestion_id != "") {
-                                            print(await Ecorealm.deleteTextSuggestion(textsuggestion_id));
-                                        }
-                                    }, 
-                                    child: Text("Deletar ultimo TextSuggestion"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.orange)
-                                    ),
-                                ),
-                                SizedBox(height: 20),
-                                // testes pesquisa
-                                ElevatedButton(
-                                    onPressed: () async {
-                                        print(await Ecorealm.getCustomers(
-                                            field: 'first_name',
-                                            logicalOperator: RealmLogicalOperator.like,
-                                            value: 'Thiago4' + '*',
-                                            valueType: RealmValueTypes.string
-                                        ));
-                                    }, 
-                                    child: Text("Filtrar nome customer"),
-                                    style: ButtonStyle(
-                                        backgroundColor: MaterialStateColor.resolveWith((states) => Colors.pink)
-                                    ),
-                                ),
-                                // ElevatedButton(
-                                //     onPressed: () async {
-                                //         if (appointment_id != "") {
-                                //             print(await Ecorealm.getCustomers(
-                                //                 campo: 'last_name',
-                                //                 logicalOperator: RealmLogicalOperator.inList,
-                                //                 valor: ['teste','teste2','alterado']
-                                //             ));
-                                //         }
-                                //     }, 
-                                //     child: Text("Filtrar ultimo nome customer"),
-                                //     style: ButtonStyle(
-                                //         backgroundColor: MaterialStateColor.resolveWith((states) => Colors.pink)
-                                //     ),
-                                // ),
-                                //TODO gerar SHA1 e colocar no App
-                                ElevatedButton(onPressed: () async {
-                                    // GoogleSignIn _googleSignIn = GoogleSignIn(
-                                    //     clientId: '302342153269-r3906g3li9bsf5n6a1h3s5v2ke0a36e1.apps.googleusercontent.com',
-                                    //     scopes: [
-                                    //         'profile',
-                                    //         'email',
-                                    //         'openid'
-                                    //     ],
-                                    // );
-                                    // if (!await _googleSignIn.isSignedIn()){
-                                    //     await _googleSignIn.signIn();
-                                    //     if (await _googleSignIn.isSignedIn()) {
-                                    //         print(_googleSignIn.clientId);
-                                    //         print(_googleSignIn.currentUser);
-                                    //         print(_googleSignIn.currentUser.id);
-                                    //         print(_googleSignIn.currentUser.email);
-                                    //         print(_googleSignIn.currentUser.displayName);
-                                    //         print(await _googleSignIn.currentUser.authHeaders);
-                                    //             await _googleSignIn.currentUser.authentication.then((value) async {
-                                    //                 print(value.accessToken);
-                                    //                 print(value.idToken);
-                                    //                 print(value.serverAuthCode);
-                                    //                 // if (await Ecorealm.logInGoogle(
-                                    //                 //     token: value.serverAuthCode
-                                    //                 // )) {
-                                    //                 //     print('serverAuthCode');
-                                    //                 // }
+                                    ElevatedButton(
+                                        onPressed: () {
+                                            try {
+                                                _googleSignIn.signIn().then((value) {
+                                                    String email = value.email.toString();
+                                                    String password = value.id.toString() + 'ap31';
 
-                                    //                 // if (await Ecorealm.logInGoogle(
-                                    //                 //     token: value.hashCode.toString()
-                                    //                 // )) {
-                                    //                 //     print('hashCode');
-                                    //                 // }
-
-                                    //                 // if (await Ecorealm.logInGoogle(
-                                    //                 //     token: value.idToken
-                                    //                 // )) {
-                                    //                 //     print('idToken');
-                                    //                 // }
-
-                                    //                 // if (await Ecorealm.logInGoogle(
-                                    //                 //     token: value.accessToken
-                                    //                 // )) {
-                                    //                 //     print('accessToken');
-                                    //                 // }
-                                    //             }
-                                    //         );
-                                    //     }
-                                    // } else {
-                                    //     await _googleSignIn.signOut();
-
-                                    //     print('dessingnado');
-                                    // }
-                                    
-                                }, child: Text("Guguru"))
-                            ]
-                        ),
+                                                    if (email != '' && password != '') {
+                                                        password = base64.encode(utf8.encode(password));
+                                                        Ecorealm.logIn(
+                                                            username: email,
+                                                            password: password
+                                                        ).then((value) {
+                                                            if (!value) {
+                                                                print('registrando');
+                                                                Ecorealm.register(
+                                                                    username: email,
+                                                                    password: password
+                                                                ).then((value) {
+                                                                    if (value) {
+                                                                        Ecorealm.logIn(
+                                                                            username: email,
+                                                                            password: password
+                                                                        ).then((value) {
+                                                                            setState(() {
+                                                                                _booLogado = value;
+                                                                            });
+                                                                        });
+                                                                    } else {    
+                                                                        print('Usuário já registrado');
+                                                                    }
+                                                                });
+                                                            } else {
+                                                                setState(() {
+                                                                    _booLogado = value;
+                                                                });
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            } catch (error) {
+                                                print(error);
+                                            }
+                                        },
+                                        child: Text('Google')
+                                    )
+                                ]
+                            ),
+                            SizedBox(height: 5),
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                            print('Começando Sync');
+                                            print(await Ecorealm.startSync());
+                                        },
+                                        child: Text('Start'),
+                                        style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.green))
+                                    ),
+                                    SizedBox(width: 10),
+                                    ElevatedButton(
+                                        onPressed: () async {
+                                            print('Parando Sync');
+                                            print(await Ecorealm.stopSync());
+                                        },
+                                        child: Text('Stop'),
+                                        style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red))
+                                    ),
+                                ],
+                            ),
+                            SizedBox(height: 5),
+                            Container(
+                                color: Colors.grey[300],
+                                child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.customer;
+                                            });
+                                        }, child: Text('cust'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.planos;
+                                            });
+                                        }, child: Text('plan'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.record;
+                                            });
+                                        }, child: Text('reco'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.schedule;
+                                            });
+                                        }, child: Text('sche'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.textSuggestion;
+                                            });
+                                        }, child: Text('text'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                        ElevatedButton(onPressed: () {
+                                            setState(() {
+                                                state = States.user;
+                                            });
+                                        }, child: Text('user'), style: ButtonStyle(backgroundColor: MaterialStateColor.resolveWith((states) => Colors.blueGrey))),
+                                    ],
+                                )
+                            ),
+                            Expanded(
+                                child: LayoutBuilder(
+                                    builder: (context, _) {
+                                        switch (state) {
+                                            case States.customer: return CustomerPage();
+                                            case States.planos: return PlansPage();
+                                            case States.record: return RecordPage();
+                                            case States.schedule: return SchedulePage();
+                                            case States.textSuggestion: return TextSuggestionPage();
+                                            case States.user: return UserPage();
+                                        }
+                                        
+                                        return SizedBox.shrink();
+                                    },
+                                )
+                            ),
+                        ],
                     ),
-                ),
+                )
             )
         );
     }

@@ -1,9 +1,13 @@
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
                        
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:xml/xml.dart';
 
 enum RealmLogicalOperator {
     equals,
@@ -27,6 +31,12 @@ enum RealmConnectionType {
     wifi,
     mobile,
     unconnected
+}
+
+enum RealmExportType {
+    json,
+    xml,
+    csv
 }
 
 class Ecorealm {
@@ -141,8 +151,8 @@ class Ecorealm {
             {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
-                "value": valores[1],
-                "valueType": valores[2] 
+                "value": valores[0],
+                "valueType": valores[1] 
             }
             )
             .onError((error, stackTrace) {
@@ -229,8 +239,8 @@ class Ecorealm {
             {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
-                "value": valores[1],
-                "valueType": valores[2]
+                "value": valores[0],
+                "valueType": valores[1]
             }
             )
             .onError((error, stackTrace) {
@@ -301,8 +311,8 @@ class Ecorealm {
             {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
-                "value": valores[1],
-                "valueType": valores[2] 
+                "value": valores[0],
+                "valueType": valores[1] 
             }
             )
             .onError((error, stackTrace) {
@@ -381,8 +391,8 @@ class Ecorealm {
             {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
-                "value": valores[1],
-                "valueType": valores[2]
+                "value": valores[0],
+                "valueType": valores[1]
             }
         )
         .onError((error, stackTrace) {
@@ -460,8 +470,8 @@ class Ecorealm {
             {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
-                "value": valores[1],
-                "valueType": valores[2]
+                "value": valores[0],
+                "valueType": valores[1]
             }
             )
             .onError((error, stackTrace) {
@@ -511,32 +521,120 @@ class Ecorealm {
         );
     }
 
+
+    static Future<String> exportData(RealmExportType type, Directory dir) async {
+        List customers = await getCustomers();
+        List appointments = await getAppointments();
+        List configurations = await getConfigurations();
+        List textSuggestions = await getTextSuggestions();
+        List records = await getRecords();
+        print(customers);
+        print(appointments);
+        print(configurations);
+        print(textSuggestions);
+        print(records);
+
+        String customerXml = _generateXML(customers, 'customer');
+        print(customerXml);
+        File customerFile = File(dir.path + '/customer.xml');
+        customerFile.createSync();
+        customerFile.writeAsString(customerXml);
+
+        String appointmentXml = _generateXML(appointments, 'appointment');
+        print(appointmentXml);
+        File appointmentFile = File(dir.path + '/appointment.xml');
+        appointmentFile.createSync();
+        appointmentFile.writeAsString(appointmentXml);
+
+        String configurationXml = _generateXML(configurations, 'configuration');
+        print(configurationXml);
+        File configurationFile = File(dir.path + '/configuration.xml');
+        configurationFile.createSync();
+        configurationFile.writeAsString(configurationXml);
+
+        String textSuggestionXml = _generateXML(textSuggestions, 'text-suggestion');
+        print(textSuggestionXml);
+        File textSuggestionFile = File(dir.path + '/textSuggestion.xml');
+        textSuggestionFile.createSync();
+        textSuggestionFile.writeAsString(textSuggestionXml);
+
+        String recordXml = _generateXML(records, 'record');
+        print(recordXml);
+        File recordFile = File(dir.path + '/record.xml');
+        recordFile.createSync();
+        recordFile.writeAsString(recordXml);
+    }
+
+    static String _generateXML(List<dynamic> info, String name) {
+        XmlBuilder xmlBuilder = XmlBuilder();
+        xmlBuilder.processing('xml', 'version="1.0"');
+        info.forEach((element) {
+            if (element is Map) {
+                xmlBuilder.element(name, nest: () {
+                    element.forEach((key, value) {
+                        xmlBuilder.element(key, nest: () {
+                            if (value is List && value.length > 0) {
+                                if (value[0] is int) {
+                                    List<int> lista = [];
+
+                                    value.forEach((element) {
+                                        if (element is int) lista.add(element);
+                                    });
+
+                                    xmlBuilder.text(base64Encode(Uint8List.fromList(lista)));
+                                } else if (value[0] is String) {
+                                    value.forEach((element) {
+                                        xmlBuilder.element(key.substring(0, key.length-1), nest: () {
+                                            xmlBuilder.text(element);
+                                        });
+                                    });
+                                } else if (value[0] is List) {
+                                    value.forEach((element) {
+                                        xmlBuilder.element(key+"-type", nest: () {
+                                            String text = '';
+                                            element.forEach((element) {
+                                                text += element;
+                                            });
+                                            xmlBuilder.text(text);
+                                        });
+                                    });
+                                }
+                            } else {
+                                xmlBuilder.text(value);
+                            }
+                        });
+                    });
+                });
+            }
+        });
+        XmlDocument doc = xmlBuilder.buildDocument(); 
+        return doc.toXmlString();
+    }
+
     static String _logicalOperator(RealmLogicalOperator operador) {
-        String lOperador = '';
         switch(operador) {
             case RealmLogicalOperator.equals:
-                lOperador = 'equals';
+                return 'equals';
             break;
             case RealmLogicalOperator.like:
-                lOperador = 'like';
+                return 'like';
             break;
             case RealmLogicalOperator.greater:
-                lOperador = 'greater';
+                return 'greater';
             break;
             case RealmLogicalOperator.lesser:
-                lOperador = 'lesser';
+                return 'lesser';
             break;
             case RealmLogicalOperator.beetwen:
-                lOperador = 'beetwen';
+                return 'beetwen';
             break;
             case RealmLogicalOperator.notNull:
-                lOperador = 'notNull';
+                return 'notNull';
             break;
             default:
-                lOperador = 'equals';
+                return 'equals';
             break; 
         }
-        return lOperador;
     }
 
     static List _valueType(RealmValueTypes valueType, dynamic value){
@@ -578,7 +676,7 @@ class Ecorealm {
                 ];
             break;
             default:
-                return [];
+                return ['',''];
             break;
         }
     }
