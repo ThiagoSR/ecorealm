@@ -84,13 +84,14 @@ class _PlansPageState extends State<PlansPage> {
                         ),
                         ElevatedButton(
                             onPressed: () async {
-                                if (configuration_id != "") {
-                                    print(await Ecorealm.getConfigurations(
-                                        field: '_id',
-                                        logicalOperator: RealmLogicalOperator.equals,
-                                        value: configuration_id,
-                                        valueType: RealmValueTypes.objectId
-                                    ));
+                                List result = await Ecorealm.getConfigurations(
+                                    limit: 1
+                                );
+
+                                print(result);
+
+                                if (result.length > 0) {
+                                    configuration_id = result[0]['id'];
                                 }
                             }, 
                             child: Text("Pegar ultimo"),

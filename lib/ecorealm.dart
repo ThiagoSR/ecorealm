@@ -143,7 +143,8 @@ class Ecorealm {
         String field,
         RealmLogicalOperator logicalOperator,
         dynamic value,
-        RealmValueTypes valueType
+        RealmValueTypes valueType,
+        int limit
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -152,7 +153,8 @@ class Ecorealm {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
-                "valueType": valores[1] 
+                "valueType": valores[1],
+                "limit": limit 
             }
             )
             .onError((error, stackTrace) {
@@ -231,7 +233,8 @@ class Ecorealm {
         String field,
         RealmLogicalOperator logicalOperator,
         dynamic value,
-        RealmValueTypes valueType
+        RealmValueTypes valueType,
+        int limit
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -240,7 +243,8 @@ class Ecorealm {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
-                "valueType": valores[1]
+                "valueType": valores[1],
+                "limit": limit
             }
             )
             .onError((error, stackTrace) {
@@ -303,7 +307,8 @@ class Ecorealm {
         String field,
         RealmLogicalOperator logicalOperator,
         dynamic value,
-        RealmValueTypes valueType
+        RealmValueTypes valueType,
+        int limit
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -312,7 +317,8 @@ class Ecorealm {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
-                "valueType": valores[1] 
+                "valueType": valores[1],
+                "limit": limit
             }
             )
             .onError((error, stackTrace) {
@@ -383,7 +389,8 @@ class Ecorealm {
         String field,
         RealmLogicalOperator logicalOperator,
         dynamic value,
-        RealmValueTypes valueType
+        RealmValueTypes valueType,
+        int limit
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -392,7 +399,8 @@ class Ecorealm {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
-                "valueType": valores[1]
+                "valueType": valores[1],
+                "limit": limit
             }
         )
         .onError((error, stackTrace) {
@@ -462,7 +470,8 @@ class Ecorealm {
         String field,
         RealmLogicalOperator logicalOperator,
         dynamic value,
-        RealmValueTypes valueType
+        RealmValueTypes valueType,
+        int limit
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -471,7 +480,8 @@ class Ecorealm {
                 "field": field,
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
-                "valueType": valores[1]
+                "valueType": valores[1],
+                "limit": limit
             }
             )
             .onError((error, stackTrace) {

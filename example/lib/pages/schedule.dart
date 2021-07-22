@@ -77,13 +77,14 @@ class _SchedulePageState extends State<SchedulePage> {
                         ),
                         ElevatedButton(
                             onPressed: () async {
-                                if (appointment_id != "") {
-                                    print(await Ecorealm.getAppointments(
-                                        field: '_id',
-                                        logicalOperator: RealmLogicalOperator.equals,
-                                        value: appointment_id,
-                                        valueType: RealmValueTypes.objectId
-                                    ));
+                                List result = await Ecorealm.getAppointments(
+                                    limit: 1
+                                );
+
+                                print(result);
+
+                                if (result.length > 0) {
+                                    appointment_id = result[0]['id'];
                                 }
                             }, 
                             child: Text("Pegar ultimo"),

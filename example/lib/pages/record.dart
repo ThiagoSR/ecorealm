@@ -79,13 +79,14 @@ class _RecordPageState extends State<RecordPage> {
                         ),
                         ElevatedButton(
                             onPressed: () async {
-                                if (record_id != "") {
-                                    print(await Ecorealm.getRecords(
-                                        field: '_id',
-                                        logicalOperator: RealmLogicalOperator.equals,
-                                        value: record_id,
-                                        valueType: RealmValueTypes.objectId
-                                    ));
+                                List result = await Ecorealm.getRecords(
+                                    limit: 1
+                                );
+
+                                print(result);
+
+                                if (result.length > 0) {
+                                    record_id = result[0]['id'];
                                 }
                             }, 
                             child: Text("Pegar ultimo"),

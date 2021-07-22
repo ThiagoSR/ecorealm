@@ -74,13 +74,14 @@ class _TextSuggestionPageState extends State<TextSuggestionPage> {
                         ),
                         ElevatedButton(
                             onPressed: () async {
-                                if (textsuggestion_id != "") {
-                                    print(await Ecorealm.getTextSuggestions(
-                                        field: '_id',
-                                        logicalOperator: RealmLogicalOperator.equals,
-                                        value: textsuggestion_id,
-                                        valueType: RealmValueTypes.objectId
-                                    ));
+                                List result = await Ecorealm.getTextSuggestions(
+                                    limit: 1
+                                );
+
+                                print(result);
+
+                                if (result.length > 0) {
+                                    textsuggestion_id = result[0]['id'];
                                 }
                             }, 
                             child: Text("Pegar ultimo"),
