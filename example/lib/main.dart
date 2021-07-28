@@ -39,7 +39,7 @@ enum States {
     user
 }
 
-class _MyAppState extends State<MyApp> {
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     States state = States.customer;
     bool _booLogado = false;
     var rng = new Random();
@@ -50,10 +50,29 @@ class _MyAppState extends State<MyApp> {
             'email'
         ],
     );
+
+
+
     @override
     void initState() {
         super.initState();
         initRealm();
+        Ecorealm.downloadState = AppLifecycleState.resumed;
+        WidgetsBinding.instance.addObserver(this);
+    }
+
+    @override
+    void dispose() {
+        WidgetsBinding.instance.removeObserver(this);
+        print('disposado');
+        super.dispose();
+    }
+
+    @override
+    void didChangeAppLifecycleState(AppLifecycleState state) {
+        super.didChangeAppLifecycleState(state);
+        
+        Ecorealm.downloadState = state;
     }
 
     // Platform messages are asynchronous, so we initialize in an async method.

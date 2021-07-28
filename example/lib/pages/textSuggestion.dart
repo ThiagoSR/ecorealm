@@ -14,6 +14,8 @@ class _TextSuggestionPageState extends State<TextSuggestionPage> {
     List listTextSuggestion = [{}];
     var rng = new Random();
     String textsuggestion_id = '';
+    int offset = 0;
+    int limit = 10;
     
     @override
     void dispose() {
@@ -22,7 +24,9 @@ class _TextSuggestionPageState extends State<TextSuggestionPage> {
 
     @override
     void initState() {
-        Ecorealm.getTextSuggestions().then((value) => setState(() {listTextSuggestion = value;}));
+        Ecorealm.getTextSuggestions(
+            limit: limit
+        ).then((value) => setState(() {listTextSuggestion = value;}));
 
         super.initState();
     }
@@ -115,6 +119,19 @@ class _TextSuggestionPageState extends State<TextSuggestionPage> {
                                 }
                             }, 
                             child: Text("Deletar ultimo"),
+                            style: ButtonStyle(
+                                backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red[900])
+                            ),
+                        ),
+                        ElevatedButton(
+                            onPressed: () async {
+                                offset += 10;
+                                Ecorealm.getTextSuggestions(
+                                    limit: limit,
+                                    offset: offset
+                                ).then((value) => setState(() {listTextSuggestion = value;}));
+                            }, 
+                            child: Text("Próximos"),
                             style: ButtonStyle(
                                 backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red[900])
                             ),

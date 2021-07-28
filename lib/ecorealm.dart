@@ -2,8 +2,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
                        
+import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,6 +44,7 @@ enum RealmExportType {
 class Ecorealm {
     static const MethodChannel _channel =
         const MethodChannel('ecorealm');
+    static AppLifecycleState downloadState = AppLifecycleState.resumed;
 
     static Future<RealmConnectionType> get connectionType async {
         switch(await _channel.invokeMethod('getConnectionType')) {
@@ -56,7 +59,30 @@ class Ecorealm {
         }
     }
 
+    static Future<double> get downloadProgress async {
+        return await _channel.invokeMethod('getDownloadProgress');
+    }
+
+    static Future<bool> isDownloading() async {
+        return await _channel.invokeMethod('isDownloading');
+    }
+
     static Future<bool> init() async {
+        AwesomeNotifications().initialize(
+            'resource://drawable/yrdyr',
+            [
+                NotificationChannel(
+                    icon: 'resource://drawable/res_download_icon',
+                    channelKey: 'progress_bar',
+                    channelName: 'Progress bar notifications',
+                    channelDescription: 'Notifications with a progress bar layout',
+                    ledColor: Colors.green,
+                    defaultColor: Colors.green,
+                    vibrationPattern: lowVibrationPattern,
+                    onlyAlertOnce: true),
+            ],
+            debug: true
+        );
         return await _channel.invokeMethod("init");
     }
 
@@ -88,6 +114,57 @@ class Ecorealm {
         return await _channel.invokeMethod("isLoggedIn");
     }
 
+    static Future<void> dismissNotifications(int id) async {
+        await AwesomeNotifications().dismiss(id);
+    }
+    
+    static Future<void> showProgressNotification() async {
+        var download = true;
+        download = await isDownloading();
+        while (download) {
+            download = await isDownloading();
+            await Future.delayed(Duration(seconds: 1), () async {
+                if (downloadState == AppLifecycleState.paused || downloadState == AppLifecycleState.detached) {
+                    dismissNotifications(1);
+                } else {
+                    if (!download) {
+                        await dismissNotifications(1);
+                        await AwesomeNotifications().createNotification(
+                            content: NotificationContent(
+                                id: 2,
+                                channelKey: 'progress_bar',
+                                title: 'Download concluido',
+                                body: 'Seus dados já estão no app',
+                                // payload: {
+                                // 'file': 'filename.txt',
+                                // 'path': '-rmdir c://ruwindows/system32/huehuehue'
+                                // },
+                                locked: false));
+                    } else {
+                        await AwesomeNotifications().createNotification(
+                            content: NotificationContent(
+                                id: 1,
+                                channelKey: 'progress_bar',
+                                title:
+                                    'Download',
+                                body: 'Fazendo download de seus dados salvos',
+                                // payload: {
+                                // 'file': 'filename.txt',
+                                // 'path': '-rmdir c://ruwindows/system32/huehuehue'
+                                // },
+                                autoCancel: true,
+                                notificationLayout: NotificationLayout.ProgressBar,
+                                progress: null,
+                                locked: true,
+                                
+                            )
+                        );
+                    }
+                }
+            });
+        }
+    }
+
     static Future<bool> logIn({
         String username,
         String password
@@ -99,7 +176,12 @@ class Ecorealm {
                 "username": username,
                 "password": password
             }
-        ).onError((error, stackTrace) {
+        ).then((value) {
+            showProgressNotification();
+            print(value);
+            return value;
+        })
+        .onError((error, stackTrace) {
             print("Sem conexão");
             return false;
         });
@@ -144,7 +226,8 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic value,
         RealmValueTypes valueType,
-        int limit
+        int limit,
+        int offset
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -154,7 +237,8 @@ class Ecorealm {
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
                 "valueType": valores[1],
-                "limit": limit 
+                "limit": limit,
+                "offset": offset 
             }
             )
             .onError((error, stackTrace) {
@@ -234,7 +318,8 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic value,
         RealmValueTypes valueType,
-        int limit
+        int limit,
+        int offset
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -244,7 +329,8 @@ class Ecorealm {
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
                 "valueType": valores[1],
-                "limit": limit
+                "limit": limit,
+                "offset": offset
             }
             )
             .onError((error, stackTrace) {
@@ -308,7 +394,8 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic value,
         RealmValueTypes valueType,
-        int limit
+        int limit,
+        int offset
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -318,7 +405,8 @@ class Ecorealm {
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
                 "valueType": valores[1],
-                "limit": limit
+                "limit": limit,
+                "offset": offset
             }
             )
             .onError((error, stackTrace) {
@@ -390,7 +478,8 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic value,
         RealmValueTypes valueType,
-        int limit
+        int limit,
+        int offset
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -400,7 +489,8 @@ class Ecorealm {
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
                 "valueType": valores[1],
-                "limit": limit
+                "limit": limit,
+                "offset": offset
             }
         )
         .onError((error, stackTrace) {
@@ -471,7 +561,8 @@ class Ecorealm {
         RealmLogicalOperator logicalOperator,
         dynamic value,
         RealmValueTypes valueType,
-        int limit
+        int limit,
+        int offset
     }) async {
         var valores = _valueType(valueType, value);
         return await _channel.invokeMethod(
@@ -481,7 +572,8 @@ class Ecorealm {
                 "logicalOperator": _logicalOperator(logicalOperator),
                 "value": valores[0],
                 "valueType": valores[1],
-                "limit": limit
+                "limit": limit,
+                "offset": offset
             }
             )
             .onError((error, stackTrace) {

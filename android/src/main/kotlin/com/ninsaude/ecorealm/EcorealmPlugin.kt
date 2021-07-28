@@ -60,6 +60,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     private lateinit var context: Context
     private var objectIdProperties: List<String> = listOf("_id", "customer")
     private var appId: String = "ecodoc-wgion"
+    private var progress: Double = 1.0
+    private var downloading: Boolean = false
 
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "ecorealm")
@@ -75,7 +77,9 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         Log.setLogLevel(Log.DEBUG)
         when (call.method) {
+            "getDownloadProgress" -> result.success(progress)
             "getConnectionType" -> getConnectionType(result)
+            "isDownloading" -> result.success(downloading)
             "init" -> init(result)
             "stopSync" -> stopSync(result)
             "startSync" -> startSync(result)
@@ -179,13 +183,12 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     fun startSync(result: Result) {
         if (sessionInit() != null) {
             try {
+                downloading = true
                 val syncSession = app.sync.getOrCreateSession(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).allowWritesOnUiThread(true).build());
                 syncSession.addDownloadProgressListener(ProgressMode.INDEFINITELY) {
-                    Log.d("download progress", it.fractionTransferred.toString())
-                }
-
-                syncSession.addUploadProgressListener(ProgressMode.INDEFINITELY) {
-                    Log.d("upload progress", it.fractionTransferred.toString())
+                    Log.d("download progress0Indefi", it.fractionTransferred.toString())
+                    progress = it.fractionTransferred
+                    if (progress == 1.0) downloading = false
                 }
                 syncSession.start();
                 DownloadChanges(syncSession);
@@ -262,28 +265,22 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 )
             ) {
                 if (it.isSuccess) {
+                    val syncConfiguration : SyncConfiguration = SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).allowWritesOnUiThread(true).build()
+
                     if (Realm.getDefaultConfiguration() == null || Realm.getDefaultConfiguration()!!.path.indexOf("default.realm") > -1) {
-                        Log.d("Nova", Realm.getDefaultConfiguration()!!.path);
+                        Log.d("Nova", Realm.getDefaultConfiguration()!!.path)
                         Log.d("Nova", app.currentUser()?.id.toString())
-                        Realm.setDefaultConfiguration(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).allowWritesOnUiThread(true).build())
+                        Realm.setDefaultConfiguration(syncConfiguration)
                     }
-                    val syncSession = app.sync.getOrCreateSession(SyncConfiguration.Builder(app.currentUser(), app.currentUser()!!.id).allowWritesOnUiThread(true).build())
+
+                    val syncSession = app.sync.getOrCreateSession(syncConfiguration)
                     val realm1 : Realm? = Realm.getInstance(sessionInit())
-                    realm1!!.addChangeListener {
-                        Log.d("Alterou", "lul")
-                    }
                     Log.d("sync", "ta fufnando acho eu")
+                    downloading = true
                     syncSession.addDownloadProgressListener(ProgressMode.INDEFINITELY) {
-                        Log.d("download progress", it.fractionTransferred.toString())
-                    }
-                    syncSession.addUploadProgressListener(ProgressMode.INDEFINITELY) {
-                        Log.d("upload progress", it.fractionTransferred.toString())
-                    }
-                    syncSession.addDownloadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                        Log.d("download progress", it.fractionTransferred.toString())
-                    }
-                    syncSession.addUploadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                        Log.d("upload progress", it.fractionTransferred.toString())
+                        Log.d("download progress1Indef", it.fractionTransferred.toString())
+                        progress = it.fractionTransferred
+                        if (progress == 1.0) downloading = false
                     }
                     DownloadChanges(syncSession)
                     UploadChanges(syncSession)
@@ -476,11 +473,38 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getDefaultInstance()//sessionInit()!!)
             var list = arrayListOf<Any>()
+            var limit : Long = 50
+            try {
+                limit = call.argument("limit") ?: limit
+            } catch (E: Exception) {
+                try {
+                    val limitInt: Int = call.argument("limit") ?: limit.toInt()
+                    limit = limitInt.toLong()
+                } catch (E: Exception) {
+                    limit = 50
+                }
+            }
+            var offset : Long = 0
+            try {
+                offset = call.argument("offset") ?: offset
+            } catch (E: Exception) {
+                try {
+                    val offsetInt: Int = call.argument("offset") ?: offset.toInt()
+                    offset = offsetInt.toLong()
+                } catch (E: Exception) {
+                    offset = 50
+                }
+            }
             lateinit var listResult: RealmResults<customer>
             listResult = filterResults(call, realm.where<customer>()) as RealmResults<customer>
 
-            listResult.forEach {
-                var avatarByte = it.avatar
+            for (result in listResult) {
+                if (offset > 0) {
+                    continue
+                }
+                offset--
+
+                var avatarByte = result.avatar
                 val avatarInt = arrayListOf<Any>()
 
                 if (avatarByte != null) {
@@ -491,17 +515,22 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
 
                 list.add(hashMapOf(
-                    "id" to it.`_id`.toString(),
-                    "firstName" to it.first_name,
-                    "lastName" to it.last_name,
+                    "id" to result.`_id`.toString(),
+                    "firstName" to result.first_name,
+                    "lastName" to result.last_name,
                     "avatar" to avatarInt,
-                    "birthday" to it.birthday?.time,
-                    "email" to it.email,
-                    "observation" to it.observation,
-                    "phone" to it.phone,
-                    "sex" to it.sex,
-                    "socialName" to it.social_name
+                    "birthday" to result.birthday?.time,
+                    "email" to result.email,
+                    "observation" to result.observation,
+                    "phone" to result.phone,
+                    "sex" to result.sex,
+                    "socialName" to result.social_name
                 ))
+
+                limit--
+                if (limit <= 0) {
+                    break
+                }
             }
 
             result.success(list)
@@ -702,18 +731,50 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
+            var limit : Long = 50
+            try {
+                limit = call.argument("limit") ?: limit
+            } catch (E: Exception) {
+                try {
+                    val limitInt: Int = call.argument("limit") ?: limit.toInt()
+                    limit = limitInt.toLong()
+                } catch (E: Exception) {
+                    limit = 50
+                }
+            }
+            var offset : Long = 0
+            try {
+                offset = call.argument("offset") ?: offset
+            } catch (E: Exception) {
+                try {
+                    val offsetInt: Int = call.argument("offset") ?: offset.toInt()
+                    offset = offsetInt.toLong()
+                } catch (E: Exception) {
+                    offset = 50
+                }
+            }
             lateinit var listResult: RealmResults<appointment>
             listResult = filterResults(call, realm.where<appointment>()) as RealmResults<appointment>
 
-            listResult.forEach {
+            for (result in listResult) {
+                if (offset > 0) {
+                    continue
+                }
+                offset--
+
                 list.add(hashMapOf(
-                    "id" to it.`_id`.toString(),
-                    "customer" to it.customer?.`_id`.toString(),
-                    "date" to it.date_time.toString(),
-                    "duration" to it.duration,
-                    "observation" to it.observation,
-                    "status" to it.status
+                    "id" to result.`_id`.toString(),
+                    "customer" to result.customer?.`_id`.toString(),
+                    "date" to result.date_time.toString(),
+                    "duration" to result.duration,
+                    "observation" to result.observation,
+                    "status" to result.status
                 ))
+
+                limit--
+                if (limit <= 0) {
+                    break
+                }
             }
 
             result.success(list)
@@ -918,12 +979,39 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
+            var limit : Long = 50
+            try {
+                limit = call.argument("limit") ?: limit
+            } catch (E: Exception) {
+                try {
+                    val limitInt: Int = call.argument("limit") ?: limit.toInt()
+                    limit = limitInt.toLong()
+                } catch (E: Exception) {
+                    limit = 50
+                }
+            }
+            var offset : Long = 0
+            try {
+                offset = call.argument("offset") ?: offset
+            } catch (E: Exception) {
+                try {
+                    val offsetInt: Int = call.argument("offset") ?: offset.toInt()
+                    offset = offsetInt.toLong()
+                } catch (E: Exception) {
+                    offset = 50
+                }
+            }
             lateinit var listResult: RealmResults<record>
             listResult = filterResults(call, realm.where<record>()) as RealmResults<record>
 
-            listResult.forEach {
+            for (result in listResult) {
+                if (offset > 0) {
+                    continue
+                }
+                offset--
+
                 var avatarByte: List<Byte>? = null
-                val content = it.content
+                val content = result.content
 
                 if (content != null){
                     val bin  = content.binary
@@ -937,15 +1025,20 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 }
 
                 list.add(hashMapOf(
-                    "id" to it.`_id`.toString(),
-                    "customer" to it.customer?.first_name,
-                    "description" to it.description,
-                    "tags" to it.tags,
-                    "date_time" to it.date_time.toString(),
-                    "soucer" to it.source,
+                    "id" to result.`_id`.toString(),
+                    "customer" to result.customer?.first_name,
+                    "description" to result.description,
+                    "tags" to result.tags,
+                    "date_time" to result.date_time.toString(),
+                    "soucer" to result.source,
                     "content_binary" to avatarByte,
                     "content_text" to content?.text
                 ))
+
+                limit--
+                if (limit <= 0) {
+                    break
+                }
             }
 
             result.success(list)
@@ -1158,24 +1251,57 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
+            var limit : Long = 50
+            try {
+                limit = call.argument("limit") ?: limit
+            } catch (E: Exception) {
+                try {
+                    val limitInt: Int = call.argument("limit") ?: limit.toInt()
+                    limit = limitInt.toLong()
+                } catch (E: Exception) {
+                    limit = 50
+                }
+            }
+            var offset : Long = 0
+            try {
+                offset = call.argument("offset") ?: offset
+            } catch (E: Exception) {
+                try {
+                    val offsetInt: Int = call.argument("offset") ?: offset.toInt()
+                    offset = offsetInt.toLong()
+                } catch (E: Exception) {
+                    offset = 50
+                }
+            }
             lateinit var listResult: RealmResults<configuration>
             listResult = filterResults(call, realm.where<configuration>()) as RealmResults<configuration>
 
-            listResult.forEach {
+            for (result in listResult) {
+                if (offset > 0) {
+                    continue
+                }
+                offset--
+
                 var subscription: ArrayList<List<String>> = arrayListOf()
-                it.subscription.forEach {
+                result.subscription.forEach {
                     subscription.add(listOf(it.id, it.name))
                 }
+
                 list.add(hashMapOf(
-                    "id" to it.`_id`.toString(),
-                    "email" to it.email,
-                    "first_name" to it.first_name,
-                    "last_name" to it.last_name,
-                    "language" to it.language,
-                    "timezone" to it.timezone,
-                    "social_name" to it.social_name,
+                    "id" to result.`_id`.toString(),
+                    "email" to result.email,
+                    "first_name" to result.first_name,
+                    "last_name" to result.last_name,
+                    "language" to result.language,
+                    "timezone" to result.timezone,
+                    "social_name" to result.social_name,
                     "subscription" to subscription
                 ))
+
+                limit--
+                if (limit <= 0) {
+                    break
+                }
             }
 
             result.success(list)
@@ -1364,16 +1490,48 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
         if (sessionInit() != null) {
             val realm = Realm.getInstance(sessionInit()!!)
             var list = arrayListOf<Any>()
+            var limit : Long = 50
+            try {
+                limit = call.argument("limit") ?: limit
+            } catch (E: Exception) {
+                try {
+                    val limitInt: Int = call.argument("limit") ?: limit.toInt()
+                    limit = limitInt.toLong()
+                } catch (E: Exception) {
+                    limit = 50
+                }
+            }
+            var offset : Long = 0
+            try {
+                offset = call.argument("offset") ?: offset
+            } catch (E: Exception) {
+                try {
+                    val offsetInt: Int = call.argument("offset") ?: offset.toInt()
+                    offset = offsetInt.toLong()
+                } catch (E: Exception) {
+                    offset = 50
+                }
+            }
             lateinit var listResult: RealmResults<text_suggestion>
             listResult = filterResults(call, realm.where<text_suggestion>()) as RealmResults<text_suggestion>
 
-            listResult.forEach {
+            for (result in listResult) {
+                if (offset > 0) {
+                    continue
+                }
+                offset--
+                
                 list.add(hashMapOf(
-                    "id" to it.`_id`.toString(),
-                    "from" to it.from,
-                    "to" to it.to,
-                    "counter" to it.counter
+                    "id" to result.`_id`.toString(),
+                    "from" to result.from,
+                    "to" to result.to,
+                    "counter" to result.counter
                 ))
+
+                limit--
+                if (limit <= 0) {
+                    break
+                }
             }
 
             result.success(list)
@@ -1491,25 +1649,23 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 logicalOperator : String - filter method
                 value : Any? - value to filter
                 valueType : String? - type of the value
-                limit : Long? - Number of results to retrieve
             RealmQuery<Any> - results to be filtered
 
         Return RealmResults<Any>
     */
     fun filterResults(call: MethodCall, query: RealmQuery<*>) : RealmResults<*> {
+        var queryAtual : RealmQuery<*> = query
         val campo: String? = call.argument("field")
         val operadorLogico: String? = call.argument("logicalOperator")
         val tipoValor: String? = call.argument("valueType")
-        var limit: Long = 100
-
-        try {
-            limit = call.argument("limit") ?: 100
-        } catch (E : Exception) {
-            val limitint: Int = call.argument("limit") ?: 100
-            limit = limitint.toLong()
+        val listIds: List<String>? = call.argument("excludeIds")
+        var excludeIds: Array<String> = arrayOf()
+        if (listIds != null) {
+            listIds.toTypedArray()
+            excludeIds = listIds.toTypedArray()
         }
 
-        if (campo.isNullOrBlank()) return query.limit(limit).findAll()
+        if (campo.isNullOrBlank()) return query.findAll()
 
         try {
             when(operadorLogico) {
@@ -1518,30 +1674,24 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         when(tipoValor) {
                             "ObjectId" -> {
                                 val valor: String? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.equalTo(campo, ObjectId(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.equalTo(campo, ObjectId(valor))
                             }
                             "Boolean" -> {
                                 val valor: Boolean? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.equalTo(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.equalTo(campo, valor)
                             }
                             "Integer" -> {
                                 val valor: Int? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.equalTo(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.equalTo(campo, valor)
                             }
                             "String" -> {
                                 val valor: String? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.equalTo(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.equalTo(campo, valor)
                             }
                             "Date" -> {
                                 val valor: Long? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.equalTo(campo, Date(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.equalTo(campo, Date(valor))
                             }
-                            else -> return query.limit(limit).findAll()
                         }
                     }
                 }
@@ -1550,10 +1700,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         when(tipoValor) {
                             "String" -> {
                                 val valor: String? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.like(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.like(campo, valor)
                             }
-                            else -> return query.limit(limit).findAll()
                         }
                     }
                 }
@@ -1562,20 +1710,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         when(tipoValor) {
                             "ObjectId" -> {
                                 val valor: String? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.greaterThan(campo, ObjectId(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.greaterThan(campo, ObjectId(valor))
                             }
                             "Integer" -> {
                                 val valor: Int? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.greaterThan(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.greaterThan(campo, valor)
                             }
                             "Date" -> {
                                 val valor: Long? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.greaterThan(campo, Date(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.greaterThan(campo, Date(valor))
                             }
-                            else -> return query.limit(limit).findAll()
                         }
                     }
                 }
@@ -1584,20 +1728,16 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         when(tipoValor) {
                             "ObjectId" -> {
                                 val valor: String? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.lessThan(campo, ObjectId(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.lessThan(campo, ObjectId(valor))
                             }
                             "Integer" -> {
                                 val valor: Int? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.lessThan(campo, valor).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.lessThan(campo, valor)
                             }
                             "Date" -> {
                                 val valor: Long? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.lessThan(campo, Date(valor)).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.lessThan(campo, Date(valor))
                             }
-                            else -> return query.limit(limit).findAll()
                         }
                     }
                 }
@@ -1606,22 +1746,21 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                         when(tipoValor) {
                             "List" -> {
                                 val valor: List<Long>? = call.argument("value")
-                                if (valor == null) return query.limit(limit).findAll()
-                                return query.between(campo, Date(valor[0]), Date(valor[1])).limit(limit).findAll()
+                                if (valor != null) queryAtual = query.between(campo, Date(valor[0]), Date(valor[1]))
                             }
-                            else -> return query.limit(limit).findAll()
                         }
                     }
                 }
                 "notNull" -> {
-                    return query.isNotNull(campo).limit(limit).findAll()
+                    queryAtual = query.isNotNull(campo)
                 }
-                else -> return query.limit(limit).findAll()
             }
-            return query.limit(limit).findAll()
+
+            return queryAtual.findAll()
+
         } catch (E : Exception) {
             Log.d("Erro", E.toString())
-            return query.limit(limit).findAll()
+            return query.findAll()
         }
 
     }
@@ -1651,18 +1790,6 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     */
     class DownloadChanges(val session: SyncSession) : Runnable {
         override fun run() {
-            session.addDownloadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                Log.d("download progress", it.fractionTransferred.toString())
-            }
-            session.addUploadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                Log.d("upload progress", it.fractionTransferred.toString())
-            }
-            session.addDownloadProgressListener(ProgressMode.INDEFINITELY) {
-                Log.d("download progress", it.fractionTransferred.toString())
-            }
-            session.addUploadProgressListener(ProgressMode.INDEFINITELY) {
-                Log.d("upload progress", it.fractionTransferred.toString())
-            }
             session.downloadAllServerChanges()
         }
     }
@@ -1677,18 +1804,6 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
     */
     class UploadChanges(val session: SyncSession) : Runnable {
         override fun run() {
-            session.addDownloadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                Log.d("download progress", it.fractionTransferred.toString())
-            }
-            session.addUploadProgressListener(ProgressMode.CURRENT_CHANGES) {
-                Log.d("upload progress", it.fractionTransferred.toString())
-            }
-            session.addDownloadProgressListener(ProgressMode.INDEFINITELY) {
-                Log.d("download progress", it.fractionTransferred.toString())
-            }
-            session.addUploadProgressListener(ProgressMode.INDEFINITELY) {
-                Log.d("upload progress", it.fractionTransferred.toString())
-            }
             session.uploadAllLocalChanges()
         }
     }

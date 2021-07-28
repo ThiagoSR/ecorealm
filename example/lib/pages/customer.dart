@@ -22,7 +22,9 @@ class _CustomerPageState extends State<CustomerPage> {
 
     @override
     void initState() {
-        Ecorealm.getCustomers().then((value) => setState(() {listCustomer = value;}));
+        Ecorealm.getCustomers(
+            limit: 5
+        ).then((value) => setState(() {listCustomer = value;}));
         super.initState();
     }
 
@@ -82,7 +84,7 @@ class _CustomerPageState extends State<CustomerPage> {
                         ElevatedButton(
                             onPressed: () async {
                                 List result = await Ecorealm.getCustomers(
-                                    limit: 1
+                                    limit: 1,
                                 );
 
                                 print(result);

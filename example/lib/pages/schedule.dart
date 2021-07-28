@@ -122,7 +122,7 @@ class _SchedulePageState extends State<SchedulePage> {
                             style: ButtonStyle(
                                 backgroundColor: MaterialStateColor.resolveWith((states) => Colors.red[900])
                             ),
-                        )
+                        ),
                     ],
                 )
             ],
