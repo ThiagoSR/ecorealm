@@ -465,6 +465,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             campo : String? - field to filter
             logicalOperator : String? - filter method
             valor : Any? - value to filter
+            limit : Long? - max posts from query
+            offset : Long? - number of posts to be skipped from query
 
         Return List<Customer>
     */
@@ -723,6 +725,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             campo : String? - field to filter
             logicalOperator : String? - filter method
             valor : Any? - value to filter
+            limit : Long? - max posts from query
+            offset : Long? - number of posts to be skipped from query
 
         Return List<Appointment>
     */
@@ -900,6 +904,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             customer : String? - customer indentifier
             contentText : String?
             contentBin : List<Int>? - list of int parsed bytes
+            contentType : String?
             tags : List<String>?
 
         Return String (new Record id)
@@ -919,6 +924,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             val content_text: String? = call.argument("contentText")
             val content_bin: List<Int>? = call.argument("contentBin")
             val content_bin_byte: ArrayList<Byte> = arrayListOf()
+            val content_type: String? = call.argument("contentType")
             val customer: String? = call.argument("customer")
 
             realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
@@ -940,6 +946,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     var content: record_content = record_content()
                     content.binary = content_bin_byte.toByteArray()
                     if (!content_text.isNullOrBlank()) content.text = content_text
+                    if (!content_text.isNullOrBlank()) content.content_type = content_type
 
                     recor.content = content
                 }
@@ -971,6 +978,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             campo : String? - field to filter
             logicalOperator : String? - filter method
             valor : Any? - value to filter
+            limit : Long? - max posts from query
+            offset : Long? - number of posts to be skipped from query
 
         Return List<Record>
     */
@@ -1032,7 +1041,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                     "date_time" to result.date_time.toString(),
                     "soucer" to result.source,
                     "content_binary" to avatarByte,
-                    "content_text" to content?.text
+                    "content_text" to content?.text,
+                    "content_type" to content?.content_type
                 ))
 
                 limit--
@@ -1059,6 +1069,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             customer : String? - customer indentifier
             contentText : String?
             contentBin : List<Int>? - list of int parsed bytes
+            contentType : String?
             tags : List<String>?
 
         Return Bool
@@ -1080,6 +1091,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                 val content_text: String? = call.argument("contentText")
                 val content_bin: List<Int>? = call.argument("contentBin")
                 val content_bin_byte: ArrayList<Byte> = arrayListOf()
+                val content_type: String? = call.argument("contentType")
                 val customer: String? = call.argument("customer")
 
                 realmThread.executeTransactionAsync(Realm.Transaction { transactionRealm ->
@@ -1103,6 +1115,7 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
                             var content: record_content = record_content()
                             content.binary = content_bin_byte.toByteArray()
                             if (!content_text.isNullOrBlank()) content.text = content_text
+                            if (!content_text.isNullOrBlank()) content.content_type = content_type
 
                             recor.content = content
                         }
@@ -1243,6 +1256,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             campo : String? - field to filter
             logicalOperator : String? - filter method
             valor : Any? - value to filter
+            limit : Long? - max posts from query
+            offset : Long? - number of posts to be skipped from query
 
         Return List<Configuration>
     */
@@ -1482,6 +1497,8 @@ class EcorealmPlugin: FlutterPlugin, MethodCallHandler {
             campo : String? - field to filter
             logicalOperator : String? - filter method
             valor : Any? - value to filter
+            limit : Long? - max posts from query
+            offset : Long? - number of posts to be skipped from query
 
         Return List<TextSuggestion>
     */

@@ -74,6 +74,7 @@ open class record(
 @RealmClass(embedded = true)
 open class record_content(
     var binary: ByteArray? = null,
+    var content_type: String? = null,
     var text: String = ""
 ): RealmObject() {}
 

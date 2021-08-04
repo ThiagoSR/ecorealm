@@ -422,6 +422,7 @@ class Ecorealm {
         @required List<String> tags,
         String contentText,
         List<int> contentBin,
+        String contentType,
         String customer
     }) async {
         return await _channel.invokeMethod(
@@ -433,6 +434,7 @@ class Ecorealm {
                 "tags": tags,
                 "contentText": contentText,
                 "contentBin": contentBin,
+                "contentType": contentType,
                 "customer": customer
             }
         );
@@ -446,6 +448,7 @@ class Ecorealm {
         List<String> tags,
         String contentText,
         List<int> contentBin,
+        String contentType,
         String customer
     }) async {
         return await _channel.invokeMethod(
@@ -458,6 +461,7 @@ class Ecorealm {
                 "tags": tags,
                 "contentText": contentText,
                 "contentBin": contentBin,
+                "contentType": contentType,
                 "customer": customer
             }
         );
